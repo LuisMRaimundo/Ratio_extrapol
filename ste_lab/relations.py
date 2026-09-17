@@ -20,7 +20,7 @@ from .transfer import Anchor, _interp_log_ratio, _safe_log_ratio
 
 
 ORDINARIO_ALIASES = frozenset({"ordinario", "arco"})
-STRING_SKIP_TECHNIQUES = frozenset({"sul tasto"})
+PRODUCTION_DYNAMICS = frozenset({"pp", "mf", "ff"})
 
 INVENTORY_COLUMNS = [
     "kind",
@@ -268,6 +268,8 @@ def _default_grade(kind: str, collection: str) -> str:
         return "Empirical_ORCH"
     if kind == "technique" and coll == "MCGILL":
         return "prediction_McGill"
+    if kind == "technique" and coll == "PHIL":
+        return "prediction_Philharmonia"
     if kind == "instrument":
         return f"L_instr_{coll}"
     if kind == "collection":
@@ -309,7 +311,7 @@ def _discover_technique(
     floor = catalog.get("harm_floor")
     for collection in collections:
         for tech in techniques:
-            if _is_ordinario(tech) or _is_tasto(tech):
+            if _is_ordinario(tech):
                 continue
             for dyn in dynamics:
                 source = _source_curve(measured, catalog, collection, "ordinario", dyn)
@@ -347,8 +349,6 @@ def _discover_collection(
     floor = catalog.get("harm_floor")
     seen: set[tuple] = set()
     for tech in techniques:
-        if _is_tasto(tech):
-            continue
         for dyn in dynamics:
             present: list[tuple[str, dict[int, float]]] = []
             for collection in collections:
@@ -450,7 +450,8 @@ def discover_relations(measured: dict, catalog: dict) -> list[Relation]:
     """Enumerate every (kind, instrument, dynamic) pair a collection can teach.
 
     Collection ids are taken from the trees — they are not a closed list.
-    Sul tasto is skipped. Harmonics honour catalog['harm_floor']. Pairs with
+    Extra collections may teach a technique that IOWA/ORCH lack.
+    Production uses only pp/mf/ff. Harmonics honour catalog['harm_floor']. Pairs with
     no positive overlap are omitted; relations with fewer than 3 anchors are
     kept for inventory (production still inherits mf when n < 3).
     """
@@ -478,7 +479,9 @@ def _mark(rel: Relation) -> Relation:
 def select_production_relation(relations: list[Relation], config: Optional[dict] = None) -> list[Relation]:
     """Today's teacher choice, expressed as a policy on Relation objects.
 
-    Strings: ORCH technique teacher; McGill con sordino only when ORCH has none.
+    Strings: ORCH technique teacher at pp/mf/ff; else Philharmonia, then McGill.
+    Extra-collection L is how a missing technique is transferred onto Media.
+    Dynamics outside {pp, mf, ff} stay on the inventory and are not production.
     Woodwinds: Iowa L_instr when present, else Philharmonia then McGill;
     L_coll is the IOWA→ORCH pair on the sibling (stored, not multiplied).
     Mutates used_in_production on the selected rows and returns them.
@@ -495,19 +498,19 @@ def select_production_relation(relations: list[Relation], config: Optional[dict]
         groups: dict[tuple[str, str], list[Relation]] = defaultdict(list)
         for rel in tech:
             groups[(rel.target_cond, rel.dynamic)].append(rel)
-        sordino_has_orch = any(
-            r.target_cond == "con sordino" and _is_orch(r.collection) for r in tech
-        )
         for (target, dyn), cands in sorted(groups.items()):
+            if dyn not in PRODUCTION_DYNAMICS:
+                continue
             orch = [r for r in cands if _is_orch(r.collection)]
             if orch:
                 chosen = max(orch, key=lambda r: (r.n_anchors, r.collection))
                 selected.append(_mark(chosen))
                 continue
-            if target == "con sordino" and not sordino_has_orch:
-                mcgill = [r for r in cands if _norm_coll(r.collection) == "MCGILL"]
-                if mcgill:
-                    selected.append(_mark(max(mcgill, key=lambda r: r.n_anchors)))
+            for coll in ("PHIL", "MCGILL"):
+                hits = [r for r in cands if _norm_coll(r.collection) == coll]
+                if hits:
+                    selected.append(_mark(max(hits, key=lambda r: r.n_anchors)))
+                    break
         return selected
 
     instr_rels = [r for r in relations if r.kind == "instrument"]
@@ -546,12 +549,19 @@ def production_relations_from_effects(
     out: list[Relation] = []
     for spec in effects:
         name = str(spec.get("name") or "").strip()
-        if not name or _is_tasto(name):
+        if not name:
             continue
         grade = str(spec.get("grade") or "")
-        collection = "ORCH" if grade.lower().startswith("empirical") else "MCGILL"
+        if grade.lower().startswith("empirical"):
+            collection = "ORCH"
+        elif "phil" in grade.lower():
+            collection = "PHIL"
+        else:
+            collection = "MCGILL"
         by_dyn = spec.get("anchors_by_dyn") or {"mf": spec.get("anchors") or []}
         for dyn, anchors in by_dyn.items():
+            if str(dyn) not in PRODUCTION_DYNAMICS:
+                continue
             out.append(
                 Relation(
                     kind="technique",

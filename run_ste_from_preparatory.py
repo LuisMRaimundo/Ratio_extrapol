@@ -43,6 +43,7 @@ from ste_lab.relation_export import (
     write_validation_csv,
 )
 from ste_lab.relations import (
+    PRODUCTION_DYNAMICS,
     field_for_transfer,
     pooled_origin_tag,
     production_relations_from_effects,
@@ -69,6 +70,7 @@ EFFECT_SLUGS = {
     "harmonics": "harmonics",
     "sul ponticello": "ponticello",
     "con sordino": "sordino",
+    "sul tasto": "tasto",
 }
 SLUG_TO_EFFECT = {slug: effect for effect, slug in EFFECT_SLUGS.items()}
 # Backward-compatible aliases (mf only). Loader also scans every ORCH_*_{dyn} column.
@@ -108,13 +110,13 @@ def parse_context_column(col: str) -> tuple[str, str, str] | None:
 
 
 def parse_orch_effect_column(col: str) -> tuple[str, str] | None:
-    """Map ORCH_ponticello_ff → ('sul ponticello', 'ff'). Skip arco, tasto."""
+    """Map ORCH_ponticello_ff → ('sul ponticello', 'ff'). Skip arco."""
     name = str(col).strip()
     if not name.upper().startswith("ORCH_"):
         return None
     rest = name[5:]
     low = rest.lower()
-    if low.startswith("arco_") or "tasto" in low:
+    if low.startswith("arco_"):
         return None
     for dyn in (*CORE, "p", "mp", "f"):
         suffix = f"_{dyn}"
@@ -138,9 +140,9 @@ def orchidea_recorded_layer(
     """Routine for every instrument, effect and dynamic.
 
     If Orchidea recorded this effect at this dynamic, those cells *are* the
-    layer (origin measured). L is not applied. Do not invent sul tasto.
+    layer (origin measured). L is not applied.
     """
-    if effect.lower() == "sul tasto" or not curve:
+    if not curve:
         return None
     layer = build_layer(
         instrument, "ORCH", effect, dyn, curve, "measured",
@@ -285,18 +287,24 @@ def load_preparatory(path: Path) -> dict:
         }
     for effect, g in anc_df.groupby(anc_df["effect"].astype(str).str.strip(), sort=False):
         effect = str(effect).strip()
-        if not effect or effect.lower() == "sul tasto":
+        if not effect:
             continue
         grade = str(g["evidence_grade"].iloc[0])
+        if str(grade).strip().lower() == "invented":
+            continue
         anchors_by_dyn: dict[str, list] = {}
         if "dynamic" in g.columns:
             for dyn, sg in g.groupby(g["dynamic"].astype(str).str.strip()):
                 dyn = str(dyn).strip()
-                if dyn and dyn.lower() != "nan":
+                if dyn in PRODUCTION_DYNAMICS:
                     anchors_by_dyn[dyn] = _anchors_from(sg)
         if not anchors_by_dyn:
+            if "dynamic" in g.columns:
+                continue
             anchors_by_dyn["mf"] = _anchors_from(g)
         anchors = anchors_by_dyn.get("mf") or next(iter(anchors_by_dyn.values()), [])
+        if not anchors:
+            continue
         effects.append(
             {
                 "name": effect,
@@ -451,7 +459,8 @@ def run(
                 "L is not applied to a recorded (effect, dynamic). "
                 "IOWA = IOWA_ordinario × exp(L). Shared L is not a second experiment. "
                 "Philharmonia/McGill context columns are not Media. "
-                "No sul tasto unless a future preparatory sheet supplies measured pairs."
+                "If Orchidea lacks a technique at pp/mf/ff, extra-collection L teaches it. "
+                "p/mp/f/fff are not production dynamics."
                 + (f" {extra}" if extra else "")
             ),
         )
@@ -638,7 +647,7 @@ def _export_ordinario_spine(pack, out, instr_id, instr_file, arco, op, extra, pr
             f"Driven by {prep.name}. Ordinario spine. "
             "Philharmonia and McGill are measured context when those columns exist. "
             "IOWA is measured. ORCH is a deprecated alias for orchidea_family_transfer_estimate."
-            + ("" if woodwind else " Sul tasto is not invented.")
+            + ("" if woodwind else " Production dynamics are pp/mf/ff only.")
             + (f" {extra}" if extra else "")
         ),
     )

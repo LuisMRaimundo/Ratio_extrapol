@@ -75,6 +75,8 @@ DEPOSIT_DEFAULTS: dict[str, dict] = {
 ORCH_TECH_SUBS = {
     "sul-ponticello": "sul ponticello",
     "arco-sul-ponticello": "sul ponticello",
+    "sul-tasto": "sul tasto",
+    "arco-sul-tasto": "sul tasto",
     "harmonics": "harmonics",
     "ordinario": "ordinario",
     "arco-normal": "ordinario",
@@ -271,8 +273,6 @@ def find_research_trees(
                 if not sub.is_dir():
                     continue
                 slug = sub.name.lower()
-                if "tasto" in slug:
-                    continue
                 tech = ORCH_TECH_SUBS.get(slug)
                 if tech:
                     trees.append((sub, "ORCH", tech))
@@ -318,13 +318,13 @@ def find_family_donor_trees(root: Path, instrument: str | None) -> list[tuple[Pa
 
 
 def _path_is_tasto(parts: list[str]) -> bool:
-    """Sul tasto is never ingested. Nested PHIL folders must not reach the ordinario fallback."""
+    """Tasto compiled books are the technique sul tasto, never ordinario."""
     return any("tasto" in p for p in parts)
 
 
 def _tech_from_parts(parts: list[str]) -> str | None:
     if _path_is_tasto(parts):
-        return None
+        return "sul tasto"
     if any(p in {"con-sord", "con-sordino", "muted"} or "con-sord" in p for p in parts):
         return "con sordino"
     if any(p in {"sul-ponticello", "arco-sul-ponticello"} or "ponticello" in p for p in parts):
@@ -348,13 +348,12 @@ def collect_compiled_specs(trees: list[tuple[Path, str, str | None]]) -> tuple[l
                 continue
             parts = [p.lower() for p in path.parts]
             if _path_is_tasto(parts):
-                continue
-            tech = forced_tech or _tech_from_parts(parts)
-            if tech == "sul tasto":
-                continue
-            # Philharmonia / McGill woodwind trees are often dynamic-only folders.
-            if not tech and collection in {"PHIL", "MCGILL"}:
-                tech = "ordinario"
+                tech = "sul tasto"
+            else:
+                tech = forced_tech or _tech_from_parts(parts)
+                # Philharmonia / McGill woodwind trees are often dynamic-only folders.
+                if not tech and collection in {"PHIL", "MCGILL"}:
+                    tech = "ordinario"
             if not tech:
                 continue
             dyn = _dyn_from_parts(parts)
@@ -485,6 +484,7 @@ EFFECT_SLUGS = {
     "harmonics": "harmonics",
     "sul ponticello": "ponticello",
     "con sordino": "sordino",
+    "sul tasto": "tasto",
 }
 
 
@@ -494,12 +494,12 @@ def effect_column(tech: str, dyn: str) -> str:
 
 
 def orchidea_recordings(measured: dict) -> dict[tuple[str, str], dict]:
-    """Every Orchidea effect × dynamic that was actually compiled. No tasto, no ordinario."""
+    """Every Orchidea effect × dynamic that was actually compiled. No ordinario."""
     out: dict[tuple[str, str], dict] = {}
     for (coll, tech, dyn), blob in measured.items():
         if coll != "ORCH":
             continue
-        if tech in {"ordinario", "arco"} or "tasto" in tech:
+        if tech in {"ordinario", "arco"}:
             continue
         curve = blob.get("curve") or {}
         if curve:
@@ -1034,8 +1034,7 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
             "donor_instrument": family_donor_instrument(instr_id),
         },
     )
-    # Production Anchors_all is the selected technique relations (today's ORCH
-    # teacher, plus McGill sordino when ORCH has none). Same skip rules.
+    # Production Anchors_all: ORCH teacher at pp/mf/ff, else Philharmonia, else McGill.
     frames = [
         relation_anchor_frame(
             rel,
@@ -1195,7 +1194,7 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
             )
             if woodwind
             else "One file for harmonics, sul ponticello and con sordino when those trees exist. "
-            "Inputs only. No sul tasto."
+            "Inputs only. Extra-collection technique L is used when Orchidea lacks that effect at pp/mf/ff."
         )
     )
     ws["A3"].alignment = Alignment(wrap_text=True)
@@ -1232,7 +1231,7 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
                 "• If Orchidea recorded that effect at that dynamic, those cells stay measured. No L on that layer.",
                 "• L is only for IOWA, or for an Orchidea dynamic that was not recorded.",
                 f"• Recorded here: {recorded_txt}. Harmonics floor {floor_txt}.",
-                "• sul tasto — not invented. Tasto folders are skipped.",
+                "• Extra collections teach a technique that IOWA/ORCH lack, at pp/mf/ff only. p/mp/f/fff are not production.",
                 "• Philharmonia / McGill harmonics sit on the grid as context. They are not Media.",
             ]
         ),
@@ -1310,7 +1309,7 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
     put(
         "Anchors_all",
         anchors,
-        "Tab 3: filter effect, copy STE_Lab_paste. Sul tasto is never written.",
+        "Tab 3: filter effect, copy STE_Lab_paste. Production dynamics are pp/mf/ff.",
     )
     put(
         "Relations_inventory",

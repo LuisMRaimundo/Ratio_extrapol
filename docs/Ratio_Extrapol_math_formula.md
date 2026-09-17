@@ -2084,7 +2084,7 @@ when operands exist and, for $\ln$, $y>0$.
 
 **F. Layman:** The program decides which numbers count as “real evidence” versus “completed grid” or “context.”
 
-**G. Specialist:** Shared-$L$ Iowa effects are excluded from principal evidence by design. Sul tasto is never invented. From 1.5.1, `collect_compiled_specs` also drops any compiled path containing `tasto` before the PHIL/MCGILL ordinario fallback, so a nested Philharmonia `arco-sul-tasto` book cannot enter an ordinario curve. This is a research-design rule, not a likelihood.
+**G. Specialist:** Shared-$L$ Iowa effects are excluded from principal evidence by design. From 1.5.2, a technique missing from IOWA/ORCH may be taught by an extra collection’s $L=\ln(y/x)$ at $\mathrm{pp}/\mathrm{mf}/\mathrm{ff}$ only; that $L$ is applied to Media. A nested Philharmonia `arco-sul-tasto` book is sul tasto, never ordinario. A $p$-only teacher is not a production dynamic. This is a research-design rule, not a likelihood.
 
 **H. Downstream:** Empirical_ORCH sheet; M-046 principal $G$.
 

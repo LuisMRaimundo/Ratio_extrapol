@@ -39,7 +39,6 @@ def discovered_orch_effect_techniques(root: Path, instrument: str) -> set[str]:
         for spec in specs
         if str(spec.get("collection", "")).upper() == "ORCH"
         and spec.get("technique") not in {None, "", "ordinario", "arco"}
-        and "tasto" not in str(spec.get("technique", ""))
     }
 
 

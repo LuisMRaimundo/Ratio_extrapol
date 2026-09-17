@@ -464,7 +464,7 @@ class TestOrchideaRecordedRoutine(unittest.TestCase):
         self.assertEqual(parse_orch_effect_column("ORCH_ponticello_pp"), ("sul ponticello", "pp"))
         self.assertEqual(parse_orch_effect_column("ORCH_harmonics_mf"), ("harmonics", "mf"))
         self.assertIsNone(parse_orch_effect_column("ORCH_arco_mf"))
-        self.assertIsNone(parse_orch_effect_column("ORCH_tasto_mf"))
+        self.assertEqual(parse_orch_effect_column("ORCH_tasto_mf"), ("sul tasto", "mf"))
         self.assertIsNone(parse_orch_effect_column("McGill_sordino_mf"))
 
     def test_recorded_orch_dynamic_is_not_replaced_by_L(self):
@@ -617,7 +617,7 @@ class TestRebuildFolderHunt(unittest.TestCase):
             self.assertIn(("ORCH", "con sordino", "con-sord"), labels)
             self.assertIn(("PHIL", "", "Philharmonia_cello"), labels)
             self.assertIn(("MCGILL", "", "McGill_cello"), labels)
-            self.assertFalse(any("tasto" in path.name.lower() or tech == "sul tasto" for path, _, tech in trees))
+            self.assertIn(("ORCH", "sul tasto", "sul-tasto"), labels)
             self.assertFalse(any(coll == "IOWA" or "iowa" in path.name.lower() for path, coll, _ in trees))
 
     def test_phil_nested_tasto_is_not_ordinario(self):
@@ -636,8 +636,10 @@ class TestRebuildFolderHunt(unittest.TestCase):
             (tasto / "Philharmonia_violin_piano_arco-sul-tasto_compiled_density_metrics_research.xlsx").write_bytes(b"PK")
             trees = find_research_trees(root, "violin")
             specs, _ = collect_compiled_specs(trees)
-            self.assertFalse(any("tasto" in str(s["path"]).lower() for s in specs))
-            self.assertFalse(any(s.get("technique") == "sul tasto" for s in specs))
+            tasto_specs = [s for s in specs if s.get("technique") == "sul tasto"]
+            self.assertEqual(len(tasto_specs), 1)
+            self.assertEqual(tasto_specs[0]["dynamic"], "p")
+            self.assertIn("arco-sul-tasto", str(tasto_specs[0]["path"]))
             phil_ord_p = [
                 s
                 for s in specs
@@ -653,7 +655,9 @@ class TestRebuildFolderHunt(unittest.TestCase):
             tasto.mkdir(parents=True)
             (tasto / "Philharmonia_violin_piano_arco-sul-tasto_compiled_density_metrics_research.xlsx").write_bytes(b"PK")
             specs, _ = collect_compiled_specs([(tree, "PHIL", "ordinario")])
-            self.assertEqual(specs, [])
+            self.assertEqual(len(specs), 1)
+            self.assertEqual(specs[0]["technique"], "sul tasto")
+            self.assertEqual(specs[0]["dynamic"], "p")
 
     def test_harm_floor_by_instrument(self):
         self.assertEqual(harm_floor("viola"), 72)
@@ -705,10 +709,33 @@ class TestTransferRelations(unittest.TestCase):
         self.assertIn("ORCH", colls)
         self.assertIn("MCGILL", colls)
         self.assertIn("SYNTH_X", colls)
-        self.assertFalse(any("tasto" in (r.target_cond or "") for r in rels))
         selected = select_production_relation(rels, {"instrument": "viola"})
         self.assertTrue(any(r.used_in_production and r.collection == "ORCH" for r in selected))
         self.assertFalse(any(r.used_in_production and r.collection == "SYNTH_X" for r in selected))
+
+    def test_extra_collection_teaches_missing_core_technique(self):
+        from ste_lab.relations import catalog_for_discovery, discover_relations, select_production_relation
+
+        curve = {60: 10.0, 62: 11.0, 64: 12.0}
+        tasto = {60: 8.0, 62: 8.8, 64: 9.6}
+        measured = {
+            ("ORCH", "ordinario", "mf"): {"curve": curve},
+            ("PHIL", "ordinario", "mf"): {"curve": curve},
+            ("PHIL", "ordinario", "p"): {"curve": curve},
+            ("PHIL", "sul tasto", "mf"): {"curve": tasto},
+            ("PHIL", "sul tasto", "p"): {"curve": tasto},
+        }
+        catalog = catalog_for_discovery(instrument="violin")
+        rels = discover_relations(measured, catalog)
+        tasto_rels = [r for r in rels if r.kind == "technique" and r.target_cond == "sul tasto"]
+        self.assertTrue(any(r.dynamic == "p" and r.collection == "PHIL" for r in tasto_rels))
+        self.assertTrue(any(r.dynamic == "mf" and r.collection == "PHIL" for r in tasto_rels))
+        selected = select_production_relation(rels, {"instrument": "violin"})
+        prod = [r for r in selected if r.target_cond == "sul tasto"]
+        self.assertEqual(len(prod), 1)
+        self.assertEqual(prod[0].collection, "PHIL")
+        self.assertEqual(prod[0].dynamic, "mf")
+        self.assertFalse(any(r.dynamic == "p" and r.used_in_production for r in rels))
 
     def test_validation_sheets_and_pi95_only_on_overlap(self):
         from ste_lab.relation_export import apply_pi95_for_technique, attach_project_validation
