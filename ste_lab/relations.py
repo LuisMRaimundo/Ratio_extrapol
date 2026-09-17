@@ -21,6 +21,8 @@ from .transfer import Anchor, _interp_log_ratio, _safe_log_ratio
 
 ORDINARIO_ALIASES = frozenset({"ordinario", "arco"})
 PRODUCTION_DYNAMICS = frozenset({"pp", "mf", "ff"})
+DYNAMIC_ORDER = ("pp", "p", "mp", "mf", "f", "ff", "fff")
+L_INVARIANCE_HOLD = 0.40
 
 INVENTORY_COLUMNS = [
     "kind",
@@ -122,6 +124,64 @@ def _norm_coll(name: str) -> str:
 
 def _is_orch(name: str) -> bool:
     return _norm_coll(name) == "ORCH"
+
+
+def _teacher_coll_match(left: Relation, right: Relation) -> bool:
+    if _is_orch(left.collection) and _is_orch(right.collection):
+        return True
+    return _norm_coll(left.collection) == _norm_coll(right.collection)
+
+
+def dynamic_rank(dynamic: str) -> Optional[int]:
+    key = (dynamic or "").strip().lower()
+    try:
+        return DYNAMIC_ORDER.index(key)
+    except ValueError:
+        return None
+
+
+def closest_production_relation(relations: Iterable[Relation], dynamic: str) -> Optional[Relation]:
+    """Exact dynamic if present; else nearest on DYNAMIC_ORDER (more anchors, then ORCH/PHIL/McGill)."""
+    cands = [rel for rel in relations if rel.anchors]
+    if not cands:
+        return None
+    want = (dynamic or "").strip().lower()
+    exact = [rel for rel in cands if (rel.dynamic or "").strip().lower() == want]
+    if exact:
+        return max(exact, key=lambda rel: rel.n_anchors)
+    target = dynamic_rank(dynamic)
+    coll_rank = {"ORCH": 0, "PHIL": 1, "MCGILL": 2}
+
+    def _key(rel: Relation) -> tuple:
+        rank = dynamic_rank(rel.dynamic)
+        dist = 99 if target is None or rank is None else abs(rank - target)
+        return (dist, -rel.n_anchors, coll_rank.get(_norm_coll(rel.collection), 3))
+
+    return min(cands, key=_key)
+
+
+def mean_anchor_L(rel: Relation) -> Optional[float]:
+    vals = list(rel.L_at_anchors().values())
+    if not vals:
+        return None
+    return sum(vals) / len(vals)
+
+
+def l_invariance_status(relations: Iterable[Relation]) -> tuple[str, Optional[float]]:
+    """held | wide | untested, plus max−min mean L across teacher dynamics (nats)."""
+    means: list[float] = []
+    dyns: set[str] = set()
+    for rel in relations:
+        mid = mean_anchor_L(rel)
+        if mid is None:
+            continue
+        dyns.add((rel.dynamic or "").strip().lower())
+        means.append(mid)
+    if len(dyns) < 2 or not means:
+        return "untested", None
+    spread = max(means) - min(means)
+    status = "held" if spread <= L_INVARIANCE_HOLD else "wide"
+    return status, spread
 
 
 def _is_tasto(technique: str) -> bool:
@@ -481,9 +541,10 @@ def select_production_relation(relations: list[Relation], config: Optional[dict]
 
     Strings: ORCH technique teacher at pp/mf/ff; else Philharmonia, then McGill.
     Extra-collection L is how a missing technique is transferred onto Media.
-    If a technique has no teacher at pp/mf/ff, the best extra-collection pair
-    at any dynamic (e.g. Philharmonia p) is the donor: L_tech is applied to
-    IOWA/ORCH ordinario at the production dynamics (arco dynamic ratios).
+    CORE teachers stay ORCH then Philharmonia then McGill. Same-collection
+    leftover dynamics stay available so a missing CORE layer can take the
+    closest donor. If a technique has no CORE teacher, every dynamic of the
+    winning extra collection is kept and the runner picks the closest.
     Woodwinds: Iowa L_instr when present, else Philharmonia then McGill;
     L_coll is the IOWA→ORCH pair on the sibling (stored, not multiplied).
     Mutates used_in_production on the selected rows and returns them.
@@ -513,7 +574,18 @@ def select_production_relation(relations: list[Relation], config: Optional[dict]
                 if hits:
                     selected.append(_mark(max(hits, key=lambda r: r.n_anchors)))
                     break
-        have_core = {r.target_cond for r in selected}
+        by_target: dict[str, list[Relation]] = defaultdict(list)
+        for rel in selected:
+            by_target[rel.target_cond].append(rel)
+        extras: list[Relation] = []
+        for rel in tech:
+            if rel.dynamic in PRODUCTION_DYNAMICS:
+                continue
+            peers = by_target.get(rel.target_cond) or []
+            if peers and any(_teacher_coll_match(rel, peer) for peer in peers):
+                extras.append(_mark(rel))
+        selected.extend(extras)
+        have_core = {r.target_cond for r in selected if r.dynamic in PRODUCTION_DYNAMICS}
         leftover: dict[str, list[Relation]] = defaultdict(list)
         for rel in tech:
             if rel.target_cond in have_core:
@@ -528,8 +600,12 @@ def select_production_relation(relations: list[Relation], config: Optional[dict]
                     break
             if chosen is None and cands:
                 chosen = max(cands, key=lambda r: r.n_anchors)
-            if chosen:
-                selected.append(_mark(chosen))
+            if chosen is None:
+                continue
+            win = _norm_coll(chosen.collection)
+            for rel in cands:
+                if _norm_coll(rel.collection) == win:
+                    selected.append(_mark(rel))
         return selected
 
     instr_rels = [r for r in relations if r.kind == "instrument"]

@@ -44,7 +44,9 @@ from ste_lab.relation_export import (
 )
 from ste_lab.relations import (
     PRODUCTION_DYNAMICS,
+    closest_production_relation,
     field_for_transfer,
+    l_invariance_status,
     pooled_origin_tag,
     production_relations_from_effects,
     relations_from_pack,
@@ -465,8 +467,9 @@ def run(
                 "IOWA = IOWA_ordinario × exp(L). Shared L is not a second experiment. "
                 "Philharmonia/McGill context columns are not Media. "
                 "If Orchidea lacks a technique at pp/mf/ff, extra-collection L teaches it. "
-                "A single-dynamic teacher (e.g. Phil p) is applied to IOWA/ORCH ordinario "
-                "at pp/mf/ff (arco dynamic ratios) and stamped l_donor_dynamic."
+                "A missing CORE dynamic takes the closest same-collection donor; "
+                "a single-dynamic teacher is applied to IOWA/ORCH ordinario at pp/mf/ff "
+                "and stamped l_donor_dynamic plus l_invariance."
                 + (f" {extra}" if extra else "")
             ),
         )
@@ -482,20 +485,9 @@ def run(
                 origins.get("ORCH", "measured"),
                 "Paste_arco", prep.name,
             )
-            prod = next(
-                (r for r in prod_rels if r.target_cond == effect and r.dynamic == dyn and r.anchors),
-                None,
-            )
-            if prod is None:
-                prod = next(
-                    (r for r in prod_rels if r.target_cond == effect and r.dynamic == "mf" and r.anchors),
-                    None,
-                )
-            if prod is None:
-                prod = next(
-                    (r for r in prod_rels if r.target_cond == effect and r.anchors),
-                    None,
-                )
+            cands = [r for r in prod_rels if r.target_cond == effect and r.anchors]
+            prod = closest_production_relation(cands, dyn)
+            inv_status, inv_spread = l_invariance_status(cands)
             donor_dyn = prod.dynamic if prod else dyn
             dyn_anchors = (
                 anchors_by_dyn.get(dyn)
@@ -510,7 +502,8 @@ def run(
             if inherited and inherited != dyn:
                 print(
                     f"  L {effect} {dyn} inherited from {getattr(prod, 'collection', '?')} "
-                    f"{inherited} (arco dynamic ratios)"
+                    f"{inherited} (closest donor; arco dynamic ratios) "
+                    f"invariance={inv_status}"
                 )
             peers = [
                 r
@@ -571,6 +564,8 @@ def run(
                         transferred,
                         inherited_from=inherited,
                         prediction=prediction,
+                        l_invariance=inv_status,
+                        l_invariance_spread=inv_spread,
                     )
                     project.add_layer(transferred)
 
@@ -591,7 +586,13 @@ def run(
                         for cell in iowa_eff.cells.values():
                             if cell.midi > 88:
                                 cell.reporting_status = "above_measured_ceiling"
-                    stamp_evidence(iowa_eff, inherited_from=inherited, prediction=prediction)
+                    stamp_evidence(
+                        iowa_eff,
+                        inherited_from=inherited,
+                        prediction=prediction,
+                        l_invariance=inv_status,
+                        l_invariance_spread=inv_spread,
+                    )
                     project.add_layer(iowa_eff)
 
         if effect == "harmonics":

@@ -290,6 +290,8 @@ def validation_evidence_rows(
                     "n_modelled": 0,
                     "evidence_role": "validation",
                     "l_donor_dynamic": "",
+                    "l_invariance": "",
+                    "l_invariance_spread": "",
                     "principal_evidence": "no",
                     "note": (
                         f"{rel.n_anchors} {rel.kind} anchors in {rel.collection}. "

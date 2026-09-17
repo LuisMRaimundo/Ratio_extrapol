@@ -381,6 +381,7 @@ class TestRunFromPreparatory(unittest.TestCase):
             self.assertFalse(hit.empty)
             self.assertEqual(str(hit.iloc[0]["l_donor_dynamic"]).strip().lower(), "p")
             self.assertEqual(str(hit.iloc[0]["evidence_role"]), "prediction")
+            self.assertEqual(str(hit.iloc[0]["l_invariance"]).strip().lower(), "untested")
 
 
 class TestEvidenceStamps(unittest.TestCase):
@@ -776,10 +777,13 @@ class TestTransferRelations(unittest.TestCase):
         self.assertTrue(any(r.dynamic == "mf" and r.collection == "PHIL" for r in tasto_rels))
         selected = select_production_relation(rels, {"instrument": "violin"})
         prod = [r for r in selected if r.target_cond == "sul tasto"]
-        self.assertEqual(len(prod), 1)
-        self.assertEqual(prod[0].collection, "PHIL")
-        self.assertEqual(prod[0].dynamic, "mf")
-        self.assertFalse(any(r.dynamic == "p" and r.used_in_production for r in rels))
+        self.assertEqual({r.dynamic for r in prod}, {"mf", "p"})
+        self.assertTrue(all(r.collection == "PHIL" for r in prod))
+        from ste_lab.relations import closest_production_relation
+
+        self.assertEqual(closest_production_relation(prod, "mf").dynamic, "mf")
+        self.assertEqual(closest_production_relation(prod, "pp").dynamic, "p")
+        self.assertEqual(closest_production_relation(prod, "ff").dynamic, "mf")
 
     def test_single_dynamic_teacher_is_inherited_to_core(self):
         from ste_lab.relations import catalog_for_discovery, discover_relations, select_production_relation
@@ -799,6 +803,87 @@ class TestTransferRelations(unittest.TestCase):
         self.assertEqual(prod[0].collection, "PHIL")
         self.assertEqual(prod[0].dynamic, "p")
         self.assertTrue(prod[0].used_in_production)
+
+    def test_orch_core_teacher_blocks_foreign_leftover(self):
+        from ste_lab.relations import catalog_for_discovery, discover_relations, select_production_relation
+
+        curve = {60: 10.0, 62: 11.0, 64: 12.0}
+        pont = {60: 12.0, 62: 13.2, 64: 14.4}
+        measured = {
+            ("ORCH", "ordinario", "mf"): {"curve": curve},
+            ("ORCH", "sul ponticello", "mf"): {"curve": pont},
+            ("PHIL", "ordinario", "p"): {"curve": curve},
+            ("PHIL", "sul ponticello", "p"): {"curve": pont},
+        }
+        catalog = catalog_for_discovery(instrument="viola")
+        rels = discover_relations(measured, catalog)
+        selected = select_production_relation(rels, {"instrument": "viola"})
+        prod = [r for r in selected if r.target_cond == "sul ponticello"]
+        self.assertEqual(len(prod), 1)
+        self.assertEqual(prod[0].collection, "ORCH")
+        self.assertEqual(prod[0].dynamic, "mf")
+
+    def test_closest_leftover_donors_split_pp_and_ff(self):
+        from ste_lab.relations import (
+            catalog_for_discovery,
+            closest_production_relation,
+            discover_relations,
+            l_invariance_status,
+            select_production_relation,
+        )
+
+        curve = {60: 10.0, 62: 11.0, 64: 12.0}
+        soft = {60: 8.0, 62: 8.8, 64: 9.6}
+        loud = {60: 4.0, 62: 4.4, 64: 4.8}
+        measured = {
+            ("ORCH", "ordinario", "mf"): {"curve": curve},
+            ("PHIL", "ordinario", "p"): {"curve": curve},
+            ("PHIL", "ordinario", "f"): {"curve": curve},
+            ("PHIL", "sul tasto", "p"): {"curve": soft},
+            ("PHIL", "sul tasto", "f"): {"curve": loud},
+        }
+        catalog = catalog_for_discovery(instrument="violin")
+        rels = discover_relations(measured, catalog)
+        selected = select_production_relation(rels, {"instrument": "violin"})
+        prod = [r for r in selected if r.target_cond == "sul tasto"]
+        self.assertEqual({r.dynamic for r in prod}, {"p", "f"})
+        self.assertEqual(closest_production_relation(prod, "pp").dynamic, "p")
+        self.assertEqual(closest_production_relation(prod, "ff").dynamic, "f")
+        self.assertEqual(closest_production_relation(prod, "mf").dynamic, "f")
+        status, spread = l_invariance_status(prod)
+        self.assertEqual(status, "wide")
+        self.assertGreater(spread, 0.40)
+
+    def test_invariance_held_when_mean_L_matches(self):
+        from ste_lab.relations import Relation, l_invariance_status
+        from ste_lab.transfer import Anchor
+
+        shared = [
+            Anchor(60, 10.0, 8.0),
+            Anchor(62, 11.0, 8.8),
+            Anchor(64, 12.0, 9.6),
+        ]
+        a = Relation(
+            kind="technique",
+            instrument="violin",
+            source_cond="ordinario",
+            target_cond="sul tasto",
+            collection="PHIL",
+            dynamic="p",
+            anchors=shared,
+        )
+        b = Relation(
+            kind="technique",
+            instrument="violin",
+            source_cond="ordinario",
+            target_cond="sul tasto",
+            collection="PHIL",
+            dynamic="mf",
+            anchors=list(shared),
+        )
+        status, spread = l_invariance_status([a, b])
+        self.assertEqual(status, "held")
+        self.assertAlmostEqual(spread, 0.0)
 
     def test_validation_sheets_and_pi95_only_on_overlap(self):
         from ste_lab.relation_export import apply_pi95_for_technique, attach_project_validation

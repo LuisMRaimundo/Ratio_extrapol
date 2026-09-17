@@ -756,11 +756,13 @@ def _write_evidence_map(ws: Worksheet, project: Project, technique: str) -> None
             "n_modelled",
             "evidence_role",
             "l_donor_dynamic",
+            "l_invariance",
+            "l_invariance_spread",
             "principal_evidence",
             "note",
         ]
     )
-    _style_header(ws, 9)
+    _style_header(ws, 11)
     for rec in list(evidence_map_rows(project, technique)) + list(getattr(project, "extra_evidence", None) or []):
         ws.append(
             [
@@ -770,18 +772,20 @@ def _write_evidence_map(ws: Worksheet, project: Project, technique: str) -> None
                 rec["n_measured"],
                 rec["n_modelled"],
                 rec["evidence_role"],
-                rec["l_donor_dynamic"],
-                rec["principal_evidence"],
-                rec["note"],
+                rec.get("l_donor_dynamic", ""),
+                rec.get("l_invariance", ""),
+                rec.get("l_invariance_spread", ""),
+                rec.get("principal_evidence", ""),
+                rec.get("note", ""),
             ]
         )
-        role = rec["evidence_role"]
-        if rec["principal_evidence"] == "yes":
-            ws.cell(ws.max_row, 8).fill = MEASURED_FILL
+        role = rec.get("evidence_role")
+        if rec.get("principal_evidence") == "yes":
+            ws.cell(ws.max_row, 10).fill = MEASURED_FILL
         elif role in {"prediction", "inherited_dynamic"}:
-            ws.cell(ws.max_row, 8).fill = CEILING_FILL
+            ws.cell(ws.max_row, 10).fill = CEILING_FILL
         else:
-            ws.cell(ws.max_row, 8).fill = MODELLED_FILL
+            ws.cell(ws.max_row, 10).fill = MODELLED_FILL
     _autosize(ws, 80)
 
 

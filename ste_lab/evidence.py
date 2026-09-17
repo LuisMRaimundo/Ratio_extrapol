@@ -91,10 +91,16 @@ def stamp_evidence(
     *,
     inherited_from: Optional[str] = None,
     prediction: bool = False,
+    l_invariance: Optional[str] = None,
+    l_invariance_spread: Optional[float] = None,
 ) -> Layer:
     """Write evidence labels onto a layer after it is built."""
     if inherited_from:
         layer.labels["l_donor_dynamic"] = inherited_from
+    if l_invariance:
+        layer.labels["l_invariance"] = l_invariance
+    if l_invariance_spread is not None:
+        layer.labels["l_invariance_spread"] = f"{float(l_invariance_spread):.4f}"
     if is_context_collection(layer.collection):
         layer.labels["evidence_role"] = "context"
     elif prediction or is_prediction_technique(layer.technique):
@@ -267,6 +273,8 @@ def evidence_map_rows(project: Project, technique: str) -> list[dict]:
                 n_modelled=n_all - n_m,
                 evidence_role=role,
                 l_donor_dynamic=donor_dynamic(layer) or "",
+                l_invariance=(layer.labels.get("l_invariance") or ""),
+                l_invariance_spread=(layer.labels.get("l_invariance_spread") or ""),
                 principal_evidence=principal,
                 note=_role_note(layer, role, n_m),
             )
@@ -285,16 +293,24 @@ def _role_note(layer: Layer, role: str, n_m: int) -> str:
             f"{n_m} measured {layer.collection} cells. "
             "Context only — not Empirical_ORCH and not Media."
         )
+    inv = (layer.labels.get("l_invariance") or "").strip()
+    inv_bit = f" L invariance {inv}." if inv else ""
     if role == "prediction":
         donor = donor_dynamic(layer)
         if donor and donor != (layer.dynamic or ""):
             return (
                 f"No Orchidea recordings. L from {donor} transposed via ordinario "
-                f"dynamic ratios onto {layer.dynamic}. Not principal evidence."
+                f"dynamic ratios onto {layer.dynamic}.{inv_bit} Not principal evidence."
             )
-        return "No Orchidea recordings. L is contextual (e.g. Philharmonia). Not principal evidence."
+        return (
+            "No Orchidea recordings. L is contextual (e.g. Philharmonia)."
+            f"{inv_bit} Not principal evidence."
+        )
     if role == "inherited_dynamic":
-        return f"Relative effect inherited from {donor_dynamic(layer) or 'a donor dynamic'}. Not an independent calibration."
+        return (
+            f"Relative effect inherited from {donor_dynamic(layer) or 'a donor dynamic'}."
+            f"{inv_bit} Not an independent calibration."
+        )
     if (layer.collection or "").upper() == "IOWA" and is_effect(layer.technique):
         return "IOWA has no effect recordings. Same-dynamic L when those anchors exist; otherwise donor L. Not replication."
     if role == "empirical":

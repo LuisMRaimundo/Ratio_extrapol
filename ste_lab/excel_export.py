@@ -438,6 +438,8 @@ def write_evidence_map_sheet(ws: Worksheet, project: Project, technique: str) ->
         "n_modelled",
         "evidence_role",
         "l_donor_dynamic",
+        "l_invariance",
+        "l_invariance_spread",
         "principal_evidence",
         "note",
     ]
@@ -452,17 +454,19 @@ def write_evidence_map_sheet(ws: Worksheet, project: Project, technique: str) ->
                 rec["n_measured"],
                 rec["n_modelled"],
                 rec["evidence_role"],
-                rec["l_donor_dynamic"],
-                rec["principal_evidence"],
-                rec["note"],
+                rec.get("l_donor_dynamic", ""),
+                rec.get("l_invariance", ""),
+                rec.get("l_invariance_spread", ""),
+                rec.get("principal_evidence", ""),
+                rec.get("note", ""),
             ]
         )
-        if rec["principal_evidence"] == "yes":
-            ws.cell(ws.max_row, 8).fill = ORIGIN_FILL.get("measured")
-        elif rec["evidence_role"] in {"prediction", "inherited_dynamic"}:
-            ws.cell(ws.max_row, 8).fill = SEV_FILL["high"]
-        elif rec["evidence_role"] == "context":
-            ws.cell(ws.max_row, 8).fill = ORIGIN_FILL.get("manual")
+        if rec.get("principal_evidence") == "yes":
+            ws.cell(ws.max_row, 10).fill = ORIGIN_FILL.get("measured")
+        elif rec.get("evidence_role") in {"prediction", "inherited_dynamic"}:
+            ws.cell(ws.max_row, 10).fill = SEV_FILL["high"]
+        elif rec.get("evidence_role") == "context":
+            ws.cell(ws.max_row, 10).fill = ORIGIN_FILL.get("manual")
     _autosize(ws, 80)
 
 
