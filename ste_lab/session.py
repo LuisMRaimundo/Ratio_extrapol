@@ -24,6 +24,7 @@ class Cell:
     reporting_status: str = ""
     anchor_source: str = ""
     source_workbook: str = ""
+    uncertainty: str = ""
 
     def as_row(self) -> dict:
         return {
@@ -37,6 +38,7 @@ class Cell:
             "pi95_high": self.pi95_high,
             "reporting_status": self.reporting_status,
             "anchor_source": self.anchor_source,
+            "uncertainty": self.uncertainty,
         }
 
 
@@ -140,6 +142,11 @@ class Project:
     layers: list[Layer] = field(default_factory=list)
     log: list[str] = field(default_factory=list)
     measured_ceiling_midi: int = DEFAULT_MEASURED_CEILING_MIDI
+    extra_evidence: list[dict] = field(default_factory=list)
+    validation_pairwise: object = None
+    validation_spread: object = None
+    validation_summary: list[str] = field(default_factory=list)
+    pooled_provenance: str = ""
 
     def add_layer(self, layer: Layer) -> Layer:
         self.layers.append(layer)

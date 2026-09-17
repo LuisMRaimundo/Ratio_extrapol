@@ -259,7 +259,7 @@ def write_acoustic_table(ws: Worksheet, layers: list[Layer], final_by_cell: dict
                     "cdm_technique_sustain_v1",
                     cell.origin,
                     "register_extrapolated" if extrapolated else "media_unique",
-                    "low" if extrapolated else ("medium" if modelled else "low"),
+                    cell.uncertainty or ("low" if extrapolated else ("medium" if modelled else "low")),
                     status,
                     cell.comment,
                 ]
@@ -443,7 +443,7 @@ def write_evidence_map_sheet(ws: Worksheet, project: Project, technique: str) ->
     ]
     ws.append(headers)
     _style_header(ws, len(headers))
-    for rec in evidence_map_rows(project, technique):
+    for rec in list(evidence_map_rows(project, technique)) + list(getattr(project, "extra_evidence", None) or []):
         ws.append(
             [
                 rec["collection"],
@@ -534,6 +534,11 @@ def export_workbook(project: Project, path: Path, flags: list[Flag], media_layer
             ("Caveat 2", "If the IOWA transfer was calibrated on a META set that already contains the other collection, the average is partly circular."),
             ("Caveat 3", "Registral and technique-level trends are supportable; individual note values are not when collections disagree more than the technique effect."),
             ("Notes", project.notes),
+            (
+                "Transfer relations",
+                "L_Validation / L_Spread / Summary_Validation check the transfer assumption across collections. "
+                "Default transfer_field.mode=single is unchanged production L. See manual §§5.10–5.12.",
+            ),
         ],
     )
     readme["A1"].font = TITLE_FONT
@@ -564,6 +569,14 @@ def export_workbook(project: Project, path: Path, flags: list[Flag], media_layer
                 name = f"Media_{layer.dynamic}"[:31]
             write_layer_sheet(wb.create_sheet(name), layer)
 
+    from .relation_export import attach_relation_sheets
+
+    attach_relation_sheets(
+        wb,
+        pairwise=getattr(project, "validation_pairwise", None),
+        spread=getattr(project, "validation_spread", None),
+        summary_lines=getattr(project, "validation_summary", None) or None,
+    )
     write_media_uncertainty(wb.create_sheet("Media_Uncertainty"), project.layers + media_layers)
     write_summary_measured_range(wb.create_sheet("Summary_Measured_Range"), media_layers or project.layers)
     woodwind_calib = None
@@ -636,7 +649,7 @@ def export_workbook(project: Project, path: Path, flags: list[Flag], media_layer
     _write_kv(
         meta,
         [
-            ("schema_version", "1.2.0"),
+            ("schema_version", "1.4.0"),
             ("acoustic_pitch_basis", "sounding_concert"),
             ("template", "STE Lab"),
             ("curated_for", "technique and family-register extrapolation"),
@@ -665,6 +678,11 @@ def export_workbook(project: Project, path: Path, flags: list[Flag], media_layer
                 else []
             ),
             ("notes", project.notes),
+            *(
+                [("transfer_field", project.pooled_provenance)]
+                if getattr(project, "pooled_provenance", "")
+                else []
+            ),
         ],
     )
 
@@ -718,6 +736,10 @@ def import_workbook(path: Path, project: Project) -> int:
         "validation",
         "final_calibration",
         "methodology",
+        "l_validation",
+        "l_spread",
+        "summary_validation",
+        "relations_inventory",
     }
     loaded = 0
     for sheet in xl.sheet_names:

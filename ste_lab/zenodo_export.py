@@ -761,7 +761,7 @@ def _write_evidence_map(ws: Worksheet, project: Project, technique: str) -> None
         ]
     )
     _style_header(ws, 9)
-    for rec in evidence_map_rows(project, technique):
+    for rec in list(evidence_map_rows(project, technique)) + list(getattr(project, "extra_evidence", None) or []):
         ws.append(
             [
                 rec["collection"],
@@ -1102,6 +1102,14 @@ def export_zenodo_workbook(
     _write_empirical_orch(wb.create_sheet("Empirical_ORCH"), project, technique)
     _write_evidence_map(wb.create_sheet("Evidence_Map"), project, technique)
     _write_summary_empirical(wb.create_sheet("Summary_Empirical_ORCH"), project, technique)
+    from .relation_export import attach_relation_sheets
+
+    attach_relation_sheets(
+        wb,
+        pairwise=getattr(project, "validation_pairwise", None),
+        spread=getattr(project, "validation_spread", None),
+        summary_lines=getattr(project, "validation_summary", None) or None,
+    )
 
     media = wb.create_sheet(media_name)
     cfg = load_config() if ww_ordinario else None
@@ -1214,6 +1222,11 @@ def export_zenodo_workbook(
             ("Recommended Zenodo role", "Deposit as internal dataset metadata / summary statistics, alongside the ZIP packages for the note-level outputs."),
             ("Do not use as", "A replacement for raw note-level outputs, logs, segmentation metadata, or source audio."),
             ("Notes", notes or project.notes),
+            (
+                "Transfer relations",
+                "L_Validation / L_Spread / Summary_Validation check the transfer assumption across collections. "
+                "Default transfer_field.mode=single is unchanged production L. See manual §§5.10–5.12.",
+            ),
         ],
     )
     readme["A1"].font = TITLE_FONT
@@ -1316,7 +1329,7 @@ def export_zenodo_workbook(
         ("key", "value"),
         [
             ("acoustic_pitch_basis", "sounding_concert"),
-            ("schema_version", "1.2.0"),
+            ("schema_version", "1.4.0"),
             ("template", "instrument_profiles_template.xlsx"),
             ("principal_evidence_sheet", "Empirical_ORCH"),
             ("source_media_sheet", f"{media_name} (completed grid, not principal evidence)"),
@@ -1473,6 +1486,8 @@ def export_zenodo_workbook(
         if ww_ordinario
         else f"{display} {technique}: principal evidence = Empirical_ORCH. IOWA modelled; ORCH measured where available. Media is a completed grid, not a second experiment."
     )
+    if getattr(project, "pooled_provenance", ""):
+        media_note = media_note + " " + project.pooled_provenance
     prov.append(
         [
             iid,

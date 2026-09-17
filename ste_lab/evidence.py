@@ -275,6 +275,11 @@ def evidence_map_rows(project: Project, technique: str) -> list[dict]:
 
 
 def _role_note(layer: Layer, role: str, n_m: int) -> str:
+    if role == "validation":
+        return (
+            f"{n_m} {layer.collection} anchors used to check the transfer assumption. "
+            "Not Media and not a measured production cell."
+        )
     if role == "context":
         return (
             f"{n_m} measured {layer.collection} cells. "
