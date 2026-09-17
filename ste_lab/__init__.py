@@ -1,13 +1,13 @@
 """Spectral Technique Extrapolation Lab (STE Lab).
 
-Legacy package name inside Ratio_extrapol. 1.5.4 keeps Media = mean(IOWA,
+Legacy package name inside Ratio_extrapol. 1.5.5 keeps Media = mean(IOWA,
 Orchidea), tasto ≠ ordinario, extra-collection teachers, and single-dynamic
-transposition. Closest same-collection donor fills a missing CORE dynamic;
-l_invariance is held|wide|untested. 1.5.3 applied one leftover L to all
-CORE layers. 1.5.2 taught missing techniques at pp/mf/ff. 1.5.0: extra
-collections enrich only through L.
+transposition. Eligible donor dynamics are independent of production pp/mf/ff.
+Relation provenance is kept per collection × dynamic. l_invariance is a
+note-wise descriptive diagnostic, not a transfer gate. 1.5.4 dropped leftover
+donors when a CORE label existed and labelled invariance from mean L only.
 """
 
-__version__ = "1.5.4"
+__version__ = "1.5.5"
 
 __all__ = ["__version__"]

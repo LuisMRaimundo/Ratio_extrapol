@@ -439,6 +439,13 @@ def write_evidence_map_sheet(ws: Worksheet, project: Project, technique: str) ->
         "evidence_role",
         "l_donor_dynamic",
         "l_invariance",
+        "l_invariance_heuristic",
+        "l_invariance_n_shared",
+        "l_invariance_mean_abs",
+        "l_invariance_max_abs",
+        "l_mean_L_spread",
+        "l_invariance_pair",
+        "l_invariance_collection",
         "l_invariance_spread",
         "principal_evidence",
         "note",
@@ -456,17 +463,25 @@ def write_evidence_map_sheet(ws: Worksheet, project: Project, technique: str) ->
                 rec["evidence_role"],
                 rec.get("l_donor_dynamic", ""),
                 rec.get("l_invariance", ""),
+                rec.get("l_invariance_heuristic", ""),
+                rec.get("l_invariance_n_shared", ""),
+                rec.get("l_invariance_mean_abs", ""),
+                rec.get("l_invariance_max_abs", ""),
+                rec.get("l_mean_L_spread", ""),
+                rec.get("l_invariance_pair", ""),
+                rec.get("l_invariance_collection", ""),
                 rec.get("l_invariance_spread", ""),
                 rec.get("principal_evidence", ""),
                 rec.get("note", ""),
             ]
         )
+        principal_col = headers.index("principal_evidence") + 1
         if rec.get("principal_evidence") == "yes":
-            ws.cell(ws.max_row, 10).fill = ORIGIN_FILL.get("measured")
+            ws.cell(ws.max_row, principal_col).fill = ORIGIN_FILL.get("measured")
         elif rec.get("evidence_role") in {"prediction", "inherited_dynamic"}:
-            ws.cell(ws.max_row, 10).fill = SEV_FILL["high"]
+            ws.cell(ws.max_row, principal_col).fill = SEV_FILL["high"]
         elif rec.get("evidence_role") == "context":
-            ws.cell(ws.max_row, 10).fill = ORIGIN_FILL.get("manual")
+            ws.cell(ws.max_row, principal_col).fill = ORIGIN_FILL.get("manual")
     _autosize(ws, 80)
 
 

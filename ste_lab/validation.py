@@ -291,6 +291,13 @@ def validation_evidence_rows(
                     "evidence_role": "validation",
                     "l_donor_dynamic": "",
                     "l_invariance": "",
+                    "l_invariance_heuristic": "",
+                    "l_invariance_n_shared": "",
+                    "l_invariance_mean_abs": "",
+                    "l_invariance_max_abs": "",
+                    "l_mean_L_spread": "",
+                    "l_invariance_pair": "",
+                    "l_invariance_collection": "",
                     "l_invariance_spread": "",
                     "principal_evidence": "no",
                     "note": (

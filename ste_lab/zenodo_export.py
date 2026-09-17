@@ -747,22 +747,29 @@ def _write_empirical_orch(ws: Worksheet, project: Project, technique: str) -> in
 
 
 def _write_evidence_map(ws: Worksheet, project: Project, technique: str) -> None:
-    ws.append(
-        [
-            "collection",
-            "dynamic",
-            "n_cells",
-            "n_measured",
-            "n_modelled",
-            "evidence_role",
-            "l_donor_dynamic",
-            "l_invariance",
-            "l_invariance_spread",
-            "principal_evidence",
-            "note",
-        ]
-    )
-    _style_header(ws, 11)
+    headers = [
+        "collection",
+        "dynamic",
+        "n_cells",
+        "n_measured",
+        "n_modelled",
+        "evidence_role",
+        "l_donor_dynamic",
+        "l_invariance",
+        "l_invariance_heuristic",
+        "l_invariance_n_shared",
+        "l_invariance_mean_abs",
+        "l_invariance_max_abs",
+        "l_mean_L_spread",
+        "l_invariance_pair",
+        "l_invariance_collection",
+        "l_invariance_spread",
+        "principal_evidence",
+        "note",
+    ]
+    ws.append(headers)
+    _style_header(ws, len(headers))
+    principal_col = headers.index("principal_evidence") + 1
     for rec in list(evidence_map_rows(project, technique)) + list(getattr(project, "extra_evidence", None) or []):
         ws.append(
             [
@@ -774,6 +781,13 @@ def _write_evidence_map(ws: Worksheet, project: Project, technique: str) -> None
                 rec["evidence_role"],
                 rec.get("l_donor_dynamic", ""),
                 rec.get("l_invariance", ""),
+                rec.get("l_invariance_heuristic", ""),
+                rec.get("l_invariance_n_shared", ""),
+                rec.get("l_invariance_mean_abs", ""),
+                rec.get("l_invariance_max_abs", ""),
+                rec.get("l_mean_L_spread", ""),
+                rec.get("l_invariance_pair", ""),
+                rec.get("l_invariance_collection", ""),
                 rec.get("l_invariance_spread", ""),
                 rec.get("principal_evidence", ""),
                 rec.get("note", ""),
@@ -781,11 +795,11 @@ def _write_evidence_map(ws: Worksheet, project: Project, technique: str) -> None
         )
         role = rec.get("evidence_role")
         if rec.get("principal_evidence") == "yes":
-            ws.cell(ws.max_row, 10).fill = MEASURED_FILL
+            ws.cell(ws.max_row, principal_col).fill = MEASURED_FILL
         elif role in {"prediction", "inherited_dynamic"}:
-            ws.cell(ws.max_row, 10).fill = CEILING_FILL
+            ws.cell(ws.max_row, principal_col).fill = CEILING_FILL
         else:
-            ws.cell(ws.max_row, 10).fill = MODELLED_FILL
+            ws.cell(ws.max_row, principal_col).fill = MODELLED_FILL
     _autosize(ws, 80)
 
 

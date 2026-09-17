@@ -381,7 +381,7 @@ class TestRunFromPreparatory(unittest.TestCase):
             self.assertFalse(hit.empty)
             self.assertEqual(str(hit.iloc[0]["l_donor_dynamic"]).strip().lower(), "p")
             self.assertEqual(str(hit.iloc[0]["evidence_role"]), "prediction")
-            self.assertEqual(str(hit.iloc[0]["l_invariance"]).strip().lower(), "untested")
+            self.assertEqual(str(hit.iloc[0]["l_invariance"]).strip().lower(), "single_dynamic")
 
 
 class TestEvidenceStamps(unittest.TestCase):
@@ -850,9 +850,10 @@ class TestTransferRelations(unittest.TestCase):
         self.assertEqual(closest_production_relation(prod, "pp").dynamic, "p")
         self.assertEqual(closest_production_relation(prod, "ff").dynamic, "f")
         self.assertEqual(closest_production_relation(prod, "mf").dynamic, "f")
-        status, spread = l_invariance_status(prod)
-        self.assertEqual(status, "wide")
-        self.assertGreater(spread, 0.40)
+        report = l_invariance_status(prod)
+        self.assertEqual(report.status, "compared")
+        self.assertEqual(report.heuristic, "wide")
+        self.assertGreater(report.max_abs_delta, 0.40)
 
     def test_invariance_held_when_mean_L_matches(self):
         from ste_lab.relations import Relation, l_invariance_status
@@ -881,9 +882,11 @@ class TestTransferRelations(unittest.TestCase):
             dynamic="mf",
             anchors=list(shared),
         )
-        status, spread = l_invariance_status([a, b])
-        self.assertEqual(status, "held")
-        self.assertAlmostEqual(spread, 0.0)
+        report = l_invariance_status([a, b])
+        self.assertEqual(report.status, "compared")
+        self.assertEqual(report.heuristic, "held")
+        self.assertAlmostEqual(report.max_abs_delta, 0.0)
+        self.assertAlmostEqual(report.mean_L_spread, 0.0)
 
     def test_validation_sheets_and_pi95_only_on_overlap(self):
         from ste_lab.relation_export import apply_pi95_for_technique, attach_project_validation

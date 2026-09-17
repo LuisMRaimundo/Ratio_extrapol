@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+from collections import OrderedDict
 from pathlib import Path
 
 import pandas as pd
@@ -43,14 +44,15 @@ from ste_lab.relation_export import (
     write_validation_csv,
 )
 from ste_lab.relations import (
-    PRODUCTION_DYNAMICS,
     closest_production_relation,
+    collection_from_grade,
     field_for_transfer,
     l_invariance_status,
     pooled_origin_tag,
     production_relations_from_effects,
     relations_from_pack,
     select_production_relation,
+    _norm_coll,
 )
 from ste_lab.transfer import Anchor
 from ste_lab.validation import compare_relations, validation_evidence_rows
@@ -287,24 +289,53 @@ def load_preparatory(path: Path) -> dict:
             "path": path,
             "origins": origins,
         }
-    for effect, g in anc_df.groupby(anc_df["effect"].astype(str).str.strip(), sort=False):
+
+    def _cell_text(frame: pd.DataFrame, column: str, default: str = "") -> pd.Series:
+        if column not in frame.columns:
+            return pd.Series([default] * len(frame), index=frame.index)
+        return frame[column].map(lambda v: "" if pd.isna(v) else str(v).strip())
+
+    work = anc_df.copy()
+    work["_effect"] = _cell_text(work, "effect")
+    work["_grade"] = _cell_text(work, "evidence_grade")
+    raw_coll = _cell_text(work, "collection")
+    work["_collection"] = raw_coll.map(
+        lambda c: (_norm_coll(c) or c) if c and c.lower() != "nan" else ""
+    )
+    inferred = []
+    for coll, grade in zip(work["_collection"], work["_grade"]):
+        if coll:
+            inferred.append(coll)
+        else:
+            inferred.append(collection_from_grade(grade) or "")
+    work["_inferred"] = inferred
+    # Known collection keeps that identity; unknown collection splits by grade
+    # so Empirical_ORCH and prediction_Philharmonia are never merged.
+    work["_group"] = [
+        coll if coll else f"grade:{grade}"
+        for coll, grade in zip(work["_inferred"], work["_grade"])
+    ]
+    for (effect, group_key), g in work.groupby(["_effect", "_group"], sort=False):
         effect = str(effect).strip()
         if not effect:
             continue
-        grade = str(g["evidence_grade"].iloc[0])
-        if str(grade).strip().lower() == "invented":
+        grade = str(g["_grade"].iloc[0])
+        if grade.strip().lower() == "invented":
             continue
+        collection = str(g["_inferred"].iloc[0] or "")
+        if not collection:
+            print(
+                f"  AMBIGUOUS collection for {effect} grade={grade or '(empty)'}: "
+                "relation left unlabelled (no collection assigned)"
+            )
+        source_cond = _cell_text(g, "source_cond", "ordinario").iloc[0] or "ordinario"
+        target_cond = _cell_text(g, "target_cond", effect).iloc[0] or effect
         anchors_by_dyn: dict[str, list] = {}
         if "dynamic" in g.columns:
             for dyn, sg in g.groupby(g["dynamic"].astype(str).str.strip()):
                 dyn = str(dyn).strip()
-                if dyn in PRODUCTION_DYNAMICS:
+                if dyn and dyn.lower() != "nan":
                     anchors_by_dyn[dyn] = _anchors_from(sg)
-            if not anchors_by_dyn:
-                for dyn, sg in g.groupby(g["dynamic"].astype(str).str.strip()):
-                    dyn = str(dyn).strip()
-                    if dyn and dyn.lower() != "nan":
-                        anchors_by_dyn[dyn] = _anchors_from(sg)
         if not anchors_by_dyn:
             if "dynamic" in g.columns:
                 continue
@@ -316,8 +347,12 @@ def load_preparatory(path: Path) -> dict:
             {
                 "name": effect,
                 "grade": grade,
+                "collection": collection,
+                "source_cond": source_cond,
+                "target_cond": target_cond,
                 "anchors": anchors,
                 "anchors_by_dyn": anchors_by_dyn,
+                "ambiguous_collection": not bool(collection),
             }
         )
     return {
@@ -438,22 +473,23 @@ def run(
     prod_rels = production_relations_from_effects(pack["effects"], instr_id)
     pairwise_parts = []
 
+    effects_by_name: dict[str, list] = OrderedDict()
     for spec in pack["effects"]:
-        effect = spec["name"]
+        effects_by_name.setdefault(spec["name"], []).append(spec)
+
+    for effect, donors in effects_by_name.items():
         if woodwind and effect.lower() in STRING_ONLY_EFFECTS:
             print(f"\n=== {effect} ===  skip: string technique, not invented for woodwinds")
             continue
-        anchors = spec["anchors"]
-        anchors_by_dyn = spec.get("anchors_by_dyn") or {"mf": anchors}
-        empirical = str(spec["grade"]).startswith("Empirical")
-        prediction = not empirical
+        n_anchors = max((len(d.get("anchors") or []) for d in donors), default=0)
+        grades = ", ".join(sorted({str(d.get("grade") or "") for d in donors}))
         min_midi = harm_floor(instrument) if effect == "harmonics" else None
         recorded = {d: pack["measured"].get(("ORCH", effect, d), {}) for d in CORE}
         print(
-            f"\n=== {effect} ===  anchors={len(anchors)}  grade={spec['grade']}  "
-            f"ORCH recorded { {d: len(recorded[d]) for d in CORE} }"
+            f"\n=== {effect} ===  donors={len(donors)}  max_anchors={n_anchors}  "
+            f"grades={grades}  ORCH recorded { {d: len(recorded[d]) for d in CORE} }"
         )
-        if len(anchors) < 3 and not any(recorded.values()):
+        if n_anchors < 3 and not any(recorded.values()):
             print("  skip: fewer than 3 anchors and no Orchidea recording")
             continue
 
@@ -461,19 +497,22 @@ def run(
             title=f"{instr_file.replace('_', ' ')} {effect} — STE from preparatory workbook",
             operator=op,
             notes=(
-                f"Driven by {prep.name}. Anchors_all grade={spec['grade']}. "
+                f"Driven by {prep.name}. Anchors_all grades={grades}. "
                 "Orchidea recorded cells stay measured; "
                 "L is not applied to a recorded (effect, dynamic). "
                 "IOWA = IOWA_ordinario × exp(L). Shared L is not a second experiment. "
                 "Philharmonia/McGill context columns are not Media. "
                 "If Orchidea lacks a technique at pp/mf/ff, extra-collection L teaches it. "
-                "A missing CORE dynamic takes the closest same-collection donor; "
-                "a single-dynamic teacher is applied to IOWA/ORCH ordinario at pp/mf/ff "
-                "and stamped l_donor_dynamic plus l_invariance."
+                "Eligible donor dynamics are independent of production pp/mf/ff. "
+                "A missing CORE dynamic takes the closest eligible donor; "
+                "relation provenance is kept per collection × dynamic. "
+                "l_invariance is a note-wise diagnostic, not a transfer gate."
                 + (f" {extra}" if extra else "")
             ),
         )
 
+        cands = [r for r in prod_rels if r.target_cond == effect and r.anchors]
+        inv_report = l_invariance_status(cands)
         for dyn in CORE:
             iowa_arco = build_layer(
                 instr_id, "IOWA", "ordinario", dyn, arco["IOWA"][dyn],
@@ -485,31 +524,33 @@ def run(
                 origins.get("ORCH", "measured"),
                 "Paste_arco", prep.name,
             )
-            cands = [r for r in prod_rels if r.target_cond == effect and r.anchors]
             prod = closest_production_relation(cands, dyn)
-            inv_status, inv_spread = l_invariance_status(cands)
             donor_dyn = prod.dynamic if prod else dyn
-            dyn_anchors = (
-                anchors_by_dyn.get(dyn)
-                or (anchors_by_dyn.get(donor_dyn) if prod else None)
-                or anchors
-            )
-            same_dyn = bool(anchors_by_dyn.get(dyn)) and dyn in anchors_by_dyn
-            if same_dyn or (dyn == "mf" and empirical and donor_dyn == "mf"):
-                inherited = None
-            else:
-                inherited = donor_dyn
+            dyn_anchors = list(prod.anchors) if prod else []
+            same_dyn = bool(prod and (prod.dynamic or "").strip().lower() == dyn)
+            inherited = None if same_dyn else donor_dyn
+            prediction = not str(getattr(prod, "grade", "") or "").startswith("Empirical")
             if inherited and inherited != dyn:
                 print(
                     f"  L {effect} {dyn} inherited from {getattr(prod, 'collection', '?')} "
                     f"{inherited} (closest donor; arco dynamic ratios) "
-                    f"invariance={inv_status}"
+                    f"invariance={inv_report.status} heuristic={inv_report.heuristic}"
                 )
+            donor_for_peers = prod.dynamic if prod else dyn
             peers = [
                 r
                 for r in discovered
-                if r.kind == "technique" and r.target_cond == effect and r.dynamic == (prod.dynamic if prod else dyn)
+                if r.kind == "technique" and r.target_cond == effect and r.dynamic == donor_for_peers
             ]
+            seen_peers = {( _norm_coll(r.collection) or r.collection, r.dynamic) for r in peers}
+            for rel in cands:
+                if rel.dynamic != donor_for_peers:
+                    continue
+                key = (_norm_coll(rel.collection) or rel.collection, rel.dynamic)
+                if key in seen_peers:
+                    continue
+                peers.append(rel)
+                seen_peers.add(key)
             midis = sorted(set(iowa_arco.cells) | set(orch_arco.cells))
             L_field, contrib, field_msgs = field_for_transfer(
                 peers or ([prod] if prod else []),
@@ -564,8 +605,7 @@ def run(
                         transferred,
                         inherited_from=inherited,
                         prediction=prediction,
-                        l_invariance=inv_status,
-                        l_invariance_spread=inv_spread,
+                        invariance_report=inv_report,
                     )
                     project.add_layer(transferred)
 
@@ -590,8 +630,7 @@ def run(
                         iowa_eff,
                         inherited_from=inherited,
                         prediction=prediction,
-                        l_invariance=inv_status,
-                        l_invariance_spread=inv_spread,
+                        invariance_report=inv_report,
                     )
                     project.add_layer(iowa_eff)
 

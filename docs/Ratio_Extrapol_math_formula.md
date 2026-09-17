@@ -1,10 +1,10 @@
 # Ratio_extrapol — mathematical reference
 
 **Current project name:** **Ratio_extrapol** (GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol); local folder spelling `Ratio_Extrapol`).  
-**Status:** production documentation of this Ratio_extrapol working tree on branch `fix/ratio-export-consistency`, starting from `42a4df1f662d5a2f5156d608305bbaff641ce1fb`. Engineering fixes below change export consistency, provenance, configuration validation, and Fill labels. They do **not** establish physical or acoustic validity. Historical research workbooks were **not** regenerated.  
-**Implementation identifiers (unchanged in source):** Python package `ste_lab` reports version 1.3.3 and still prints “STE Lab” in the GUI, workbook metadata, and some comments. Those strings are **legacy self-names inside the code**, not the current repository name.  
+**Status:** production documentation of this Ratio_extrapol **working-tree source** on branch `fix/1.5.4-donor-provenance`. Reviewed 1.5.4 baseline: `9a307705100f986258991c88d51bc7324e98e61e`. This file describes the corrected 1.5.5 implementation in the working tree; it does **not** claim that `9a30770` still matches the modified code, and it does not claim identity with GitHub `main`. Engineering corrections below restore eligible donor dynamics, per-relation provenance, and a note-wise $L$ diagnostic. They do **not** establish physical or acoustic validity. Historical research workbooks were **not** regenerated.  
+**Implementation identifiers (unchanged in source):** Python package `ste_lab` reports version 1.5.5 and still prints “STE Lab” in the GUI, workbook metadata, and some comments. Those strings are **legacy self-names inside the code**, not the current repository name.  
 **Language:** English. StackEdit-compatible Markdown + LaTeX (`$...$` inline, `$$...$$` display). No custom macros.  
-**Audit date:** 2026-09-17. Correction pass: 2026-09-17.
+**Audit date:** 2026-09-17. Donor-provenance correction pass: 2026-09-17.
 
 This document extracts **project-defined** mathematics from first-party Python and from spreadsheet formulas this Ratio_extrapol repository writes. External-library internals are **not** reproduced; only the call site, arguments, and surrounding project math are recorded.
 
@@ -21,13 +21,13 @@ Do **not** treat this Ratio_extrapol repository as identical to Extrapol_data, t
 | Current name | Ratio_extrapol (GitHub); local folder `Ratio_Extrapol` |
 | Legacy name in source | STE Lab / package `ste_lab` (not renamed in this documentation pass) |
 | Local repository root | `C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol` |
-| Local branch | `fix/ratio-export-consistency` (created from `main`) |
-| Local HEAD | `42a4df1f662d5a2f5156d608305bbaff641ce1fb` (uncommitted correction working tree) |
-| Uncommitted source changes at audit start | none (working tree clean). Correction pass adds `ste_lab/media_policy.py` and focused export/Fill/config edits. Historical analyses were not rewritten. |
+| Local branch | `fix/1.5.4-donor-provenance` (created from `main` at `9a30770`) |
+| Reviewed baseline | `9a307705100f986258991c88d51bc7324e98e61e` (v1.5.4, clean `main`) |
+| Documented source | working tree on this branch after the 1.5.5 donor/provenance/diagnostic corrections (not that baseline commit) |
+| Uncommitted source changes at this documentation pass | the 1.5.5 correction files listed in Appendix B. Historical analyses were not rewritten. |
 | GitHub | https://github.com/LuisMRaimundo/Ratio_extrapol |
 | GitHub default branch | `main` |
-| GitHub HEAD (read-only: `gh api` + `git ls-remote`; **no fetch** into the local repo) | `42a4df1f662d5a2f5156d608305bbaff641ce1fb` |
-| Local vs GitHub | **identical** at documentation time |
+| Local vs GitHub | this branch is local only; this task does not push or merge |
 | Declared dependencies | `numpy>=1.24`, `scipy>=1.11`, `pandas>=2.0`, `openpyxl>=3.1` ([requirements.txt](../requirements.txt)) |
 | Environment used only for version strings and SciPy docstring (project modules were not imported) | Python 3.10.11; `numpy 2.2.6`, `scipy 1.13.1`, `pandas 2.3.3`, `openpyxl 3.1.5` |
 | Logarithm in first-party code | natural log: `numpy.log` / `math.log` and `numpy.exp` / `math.exp` — **not** $\log_{10}$, **not** dB, **not** SPL |
@@ -35,7 +35,7 @@ Do **not** treat this Ratio_extrapol repository as identical to Extrapol_data, t
 
 SHA-256 hashes of documented files are in [Appendix B](#appendix-b--source-file-hashes). Recompute if those files change.
 
-Comparison limitation: GitHub was inspected by remote SHA only. A temporary clone was unnecessary because the SHAs matched. This document describes the **local working tree**, which happened to equal GitHub.
+This document describes the **local working-tree source**. Appendix B hashes are of those files; this Markdown file is intentionally omitted from the hash table (no self-referential hash).
 
 ---
 
@@ -2074,7 +2074,7 @@ when operands exist and, for $\ln$, $y>0$.
 
 **A. Status:** production labelling. Not a numeric estimator, but it **selects** the inferential dataset.
 
-**B. Source:** [ste_lab/evidence.py](../ste_lab/evidence.py), `evidence_role` / `stamp_evidence` / `principal_empirical_rows`, lines 62–207.
+**B. Source:** [ste_lab/evidence.py](../ste_lab/evidence.py), `evidence_role` / `stamp_evidence` / `principal_empirical_rows`.
 
 **C. Snippet (rules):** prediction techniques (`sul tasto`); context collections PHIL/McGill; inherited dynamic if `l_donor_dynamic` $\neq$ layer dynamic; IOWA effects $\to$ `modelled_completion`; ORCH measured $\to$ `empirical`; woodwind Iowa ordinario measured $\to$ `empirical` if no ORCH principal rows.
 
@@ -2084,11 +2084,90 @@ when operands exist and, for $\ln$, $y>0$.
 
 **F. Layman:** The program decides which numbers count as “real evidence” versus “completed grid” or “context.”
 
-**G. Specialist:** Shared-$L$ Iowa effects are excluded from principal evidence by design. From 1.5.4, a technique missing from IOWA/ORCH may be taught by an extra collection’s $L=\ln(y/x)$. A missing production dynamic $d$ uses the closest same-collection teacher $d_*$ on $\mathrm{pp},p,\mathrm{mp},\mathrm{mf},f,\mathrm{ff}$: $\hat y(d)=z_{\mathrm{ord}}(d)\,e^{L(d_*)}$. `l_donor_dynamic` records $d_*$. If two or more teacher dynamics exist, `l_invariance` is `held` when $\max\bar L-\min\bar L\le 0.40$ nats, else `wide`; a single teacher is `untested`. A foreign leftover (Phil $p$ when Orchidea already teaches $mf$) is not used. A nested Philharmonia `arco-sul-tasto` book is sul tasto, never ordinario. This is a research-design rule, not a likelihood.
+**G. Specialist:** Shared-$L$ Iowa effects are excluded from principal evidence by design. Extra collections teach a missing technique through $L=\ln(y/x)$ only (M-051). `l_invariance` is a descriptive diagnostic (M-052), not an evidence-role rule. A nested Philharmonia `arco-sul-tasto` book is sul tasto, never ordinario. Measured sul tasto may teach its own technique. These are research-design rules, not likelihoods.
 
 **H. Downstream:** Empirical_ORCH sheet; M-046 principal $G$.
 
 **I. Tests:** `test_orch_recorded_is_principal`; `test_iowa_ordinario_is_principal_on_woodwind`; `test_family_transfer_orch_is_not_principal`; `test_mcgill_and_phil_are_context_not_principal`.
+
+---
+
+### M-051 — Eligible donor dynamics and closest-donor transfer (production policy)
+
+**A. Status:** production selection. Does not introduce a new extrapolation law. Acoustic estimators are unchanged.
+
+**B. Source:** [run_ste_from_preparatory.py](../run_ste_from_preparatory.py) `load_preparatory` (from line 189) and `run` (from line 410); [ste_lab/relations.py](../ste_lab/relations.py) `closest_production_relation` (line 158), `collection_from_grade` (line 144), `production_relations_from_effects` (line 772), `select_production_relation` (line 672); [build_ste_preparatory.py](../build_ste_preparatory.py) `relation_anchor_frame` / `_anchors`.
+
+**C. Snippet (selection key):**
+
+```python
+return (dist, -rel.n_anchors, COLL_PRIORITY.get(_norm_coll(rel.collection), 3), rel.collection or "")
+```
+
+`COLL_PRIORITY` is ORCH $0$, PHIL $1$, McGill $2$. Exact dynamic has $\mathrm{dist}=0$.
+
+**D. LaTeX:** production outputs $d\in\{\mathrm{pp},\mathrm{mf},\mathrm{ff}\}$. Eligible donors $d_*$ may be any labelled dynamic on the stored scale. With $L(m)=\ln(y/x)$ measured at $d_*$,
+
+$$
+\hat y(d)=z_{\mathrm{ord}}(d)\,e^{L(d_*)}.
+$$
+
+Closest donor: exact $d$ if present; else
+
+$$
+d_*=\arg\min_{d'}\Bigl(|r(d')-r(d)|,\;-n(d'),\;\pi(\mathrm{coll}(d'))\Bigr),
+$$
+
+where $r$ is the rank on $\mathrm{pp},p,\mathrm{mp},\mathrm{mf},f,\mathrm{ff}$ and $\pi$ is ORCH $<$ PHIL $<$ McGill. A leftover from another collection is not used when a CORE teacher already exists for that technique (`select_production_relation`).
+
+Pooled mode (default) at a fixed donor dynamic averages eligible collection $L$ values at shared MIDI (weight = anchor count, $\ge 2$ collections). Single mode uses only the chosen teacher. Extra collections never contribute their absolute CDM to Media.
+
+**E. Symbols:** $z_{\mathrm{ord}}(d)$ IOWA or ORCH ordinario at the output dynamic; $L(d_*)$ teacher log-ratio; $\pi$ documented collection priority.
+
+**F. Layman:** The published book still has only soft / medium / loud. If the teacher was recorded at piano, that piano ratio is applied to the soft, medium, and loud ordinary curves. Piano is not dropped just because a mezzo-forte teacher also exists. Iowa/Orchidea Media is still the mean of those two spines.
+
+**G. Specialist:** 1.5.4 `load_preparatory` kept leftover dynamics only when no CORE label existed, so $p$ was discarded whenever $mf$ was present and the nearest-donor rule could not fire. 1.5.4 `production_relations_from_effects` copied the first row’s `evidence_grade` onto every dynamic of the technique. 1.5.5 groups `Anchors_all` by effect and collection (or by unambiguous grade on legacy files), keeps every eligible donor dynamic, and reconstructs one `Relation` per collection $\times$ dynamic. Ambiguous legacy grades are reported and left unlabelled; they are not assigned McGill. Sul tasto classification is unchanged: a path containing `tasto` is never ordinario.
+
+**H. Downstream:** `l_donor_dynamic`; Evidence_Map; STE and Zenodo numerical layers; Media still mean(IOWA, ORCH).
+
+**I. Tests:** `test_donor_provenance.py` (loader mixed sets, $p{+}mf$ export $10$ not $16$, reversed-row provenance, pooled vs single, builder$\to$runner integration); `test_p_only_phil_tasto_inherits_to_core`; `test_phil_nested_tasto_is_not_ordinario`.
+
+---
+
+### M-052 — Note-wise $L$ comparison (descriptive diagnostic; not a transfer gate)
+
+**A. Status:** production reporting. Does **not** change $\hat y$ and does not reject a donor.
+
+**B. Source:** [ste_lab/relations.py](../ste_lab/relations.py) `l_invariance_status` / `InvarianceReport` (from line 191).
+
+**C. Snippet (compared pair):** shared MIDI $m$ inside one collection; statistics are $\mathrm{mean}|L_{d_0}(m)-L_{d_1}(m)|$ and $\max|L_{d_0}(m)-L_{d_1}(m)|$. Mean-$L$ range is stored separately as `mean_L_spread`.
+
+**D. LaTeX:** let $L_d(m)$ be the anchor log-ratio at sounding MIDI $m$ for dynamic $d$ in one collection. For a pair with overlap $\mathcal{M}=\{m:L_{d_0}(m)\text{ and }L_{d_1}(m)\text{ exist}\}$,
+
+$$
+\Delta_{\mathrm{mean}}=\frac{1}{|\mathcal{M}|}\sum_{m\in\mathcal{M}}|L_{d_0}(m)-L_{d_1}(m)|,\qquad
+\Delta_{\max}=\max_{m\in\mathcal{M}}|L_{d_0}(m)-L_{d_1}(m)|.
+$$
+
+The older descriptive statistic remains
+
+$$
+\mathrm{spread}_{\bar L}=\max_d \bar L_d-\min_d \bar L_d,\qquad \bar L_d=\frac{1}{n_d}\sum_m L_d(m).
+$$
+
+Agreement of averages is **not** evidence that the curves are invariant. Counterexample: $L_p=(-1,0,1)$ and $L_{\mathrm{mf}}=(1,0,-1)$ at the same MIDI notes give $\mathrm{spread}_{\bar L}=0$ and $\Delta_{\max}=2$.
+
+Status labels: `compared` (overlap exists), `single_dynamic`, `insufficient_overlap`, `mixed_collection` (do not confound collection with dynamic). The export column `l_invariance_heuristic` is `held` when $\Delta_{\max}\le 0.40$ nats, else `wide`. **That $0.40$ cutoff is a reporting heuristic, not a scientifically validated acceptance threshold.** `l_invariance_spread` now stores $\Delta_{\mathrm{mean}}$ (migration from 1.5.4, where it stored $\mathrm{spread}_{\bar L}$). `l_mean_L_spread` stores $\mathrm{spread}_{\bar L}$.
+
+**E. Symbols:** $\mathcal{M}$ shared MIDI set; $\Delta_{\max}$ heuristic argument; $\mathrm{spread}_{\bar L}$ descriptive only.
+
+**F. Layman:** The program now checks whether the piano-ratio and mezzo-ratio look similar *note by note*, not whether their averages happen to match. It still uses the nearest donor even if they disagree.
+
+**G. Specialist:** Comparing different collections, or different pitch coverage, as if they were one $L(d)$ curve is a confound. Mixed-collection and no-overlap cases are labelled instead of forced into `held`/`wide`. This diagnostic is independent of M-051 unless a future explicit policy says otherwise.
+
+**H. Downstream:** Evidence_Map columns `l_invariance`, `l_invariance_heuristic`, `l_invariance_n_shared`, `l_invariance_mean_abs`, `l_invariance_max_abs`, `l_mean_L_spread`, `l_invariance_pair`, `l_invariance_collection`. Consumers that still read `l_invariance_spread` now receive $\Delta_{\mathrm{mean}}$.
+
+**I. Tests:** `TestInvarianceDiagnostic` in `test_donor_provenance.py` (crossing curves, identical curves, partial overlap, no overlap, single dynamic, mixed collections).
 
 ---
 
@@ -2294,7 +2373,7 @@ Project algorithms that merely call `log`/`exp`/`mean` are documented as M-entri
 | [ste_lab/gui_app.py](../ste_lab/gui_app.py) | 882 | Calls M-018/M-027/M-032; help text (F-061 not brightness); no extra estimator |
 | [ste_lab/prep_gui.py](../ste_lab/prep_gui.py) | 473 | Non-mathematical GUI |
 | [ste_lab/media_format.py](../ste_lab/media_format.py) | 104 | Non-mathematical (colours) |
-| [ste_lab/__init__.py](../ste_lab/__init__.py) | 12 | Version 1.3.3 / policy comment |
+| [ste_lab/__init__.py](../ste_lab/__init__.py) | 12 | Version 1.5.5 / policy comment |
 | [ste_lab/__main__.py](../ste_lab/__main__.py) | 4 | Non-mathematical |
 | [build_ste_preparatory.py](../build_ste_preparatory.py) | 1218 | Project mathematics documented (M-006, M-020, M-021, M-024, M-028) |
 | [build_viola_ste_preparatory.py](../build_viola_ste_preparatory.py) | 19 | Duplicate/legacy wrapper; `HARM_LO=72` documented under M-006 |
@@ -2322,48 +2401,51 @@ No first-party `.py` file was left “not inspected.”
 
 ## Appendix B — Source-file hashes
 
-SHA-256 of the working-tree files after the export-consistency documentation pass (branch `fix/ratio-export-consistency`, starting commit `42a4df1`). Line counts are physical lines including blanks.
+SHA-256 of the working-tree files after the 1.5.5 donor-provenance correction (branch `fix/1.5.4-donor-provenance`, baseline `9a30770`). Line counts are physical lines including blanks. This Markdown file is omitted (no self-referential hash).
 
 | File | SHA-256 | Lines |
 |------|---------|------:|
-| `README.md` | `21139e10334bcfcb890b22838a48e9d66607f24059aeb895e699e632119797f6` | 61 |
-| `build_ste_preparatory.py` | `2ae13ab3b3eff9e259c5de1d43f04554ea0aa6c20063b8d612b1b43081c472ff` | 1218 |
+| `README.md` | `2b528046aadd346affe7bceb869b11017dc4eee4ae10ed0542f218d3d204c513` | 77 |
+| `build_ste_preparatory.py` | `a7b8679900dd43d69dc4768bf151a46abb3d20153583b969905594e7b6735c8d` | 1366 |
 | `build_viola_ste_preparatory.py` | `5987f3e4838aee00f8fd8e76cb6b4479eda85f76aa4d8f48d1f879a4caa9da8f` | 19 |
-| `calibration.yaml` | `8c5e20732b789544e7c380ff8c30150752aedf11c1945aa63a49407e3fae4525` | 31 |
+| `calibration.yaml` | `c7dc1abc5409d1084917f01172f4a20690e7477af652f1eb4125733068d8a468` | 42 |
 | `launch_ste_lab.py` | `dc0eb964bba2e20be9295b215f12b72f58bd2f98184ad30bc280db8a21df3971` | 14 |
 | `launch_ste_prep.py` | `ce04439011a9431d23466a4488b68b3ab7a872f650f5da62f928a620cd3a9a76` | 14 |
 | `requirements.txt` | `ab8b440bf65ba9e0837e16cc9ccd41910fd20e19995b433c8dea9c8e82b1f51b` | 4 |
-| `run_ste_effects_batch.py` | `9dff744f5702fdb4488a137bb21d3bdbfa7ea53b9319e2cadc730cb3ce571687` | 691 |
-| `run_ste_effects_batch_cello.py` | `02cb0f4987c582b0d2d64041dfae1edbf3ce6c3ff21ccf240fae653c95f3f647` | 326 |
-| `run_ste_effects_batch_double_bass.py` | `fc024836275964c81b7f00110f0d848710222aca4d77f6c0fab8f73c4ac466c4` | 328 |
-| `run_ste_effects_batch_viola.py` | `28ad8f4428c3e81b6355fb69ce1126407dd0018d725db586c08f92427fa25086` | 331 |
+| `run_ste_effects_batch.py` | `1d1ea932ae6c9cc92a5a8a9c19da1cfc1bb1247fc50fb28f212552c73de08777` | 701 |
+| `run_ste_effects_batch_cello.py` | `6bae0c50abe2556b58c3c7641b8469ee955d4996cd0e889d14d9e74bf3251eb5` | 326 |
+| `run_ste_effects_batch_double_bass.py` | `9da3e782e40e26cd954faffad9be224ae5db49b314942e356c8892ab9ce92bbe` | 328 |
+| `run_ste_effects_batch_viola.py` | `9b578375d5dea456e1ce5b3727acae9ae0c4670decbf627007ea3c0c3085cef4` | 331 |
 | `run_ste_effects_batch_violin4.py` | `1bf16ba86888a7164ffb02c68bd1f1f37dbc6353bcaff03ea056c57bbc2e155a` | 127 |
-| `run_ste_from_preparatory.py` | `fc99bdffdde59d5dc5bb5d19f13fdb03e3f8e86766a457291b8999a04cb78a95` | 662 |
-| `STE_Lab_User_and_Technical_Manual.html` | `b72130afc5446a118ab230e2be22ac2c23c483574871ddda0615c9f0adeba055` | 593 |
-| `docs/README.md` | `5846eb94595e85b2ef5363a175cfd19dd2acade6b647941c94d813ff93bdbcf2` | 8 |
-| `ste_lab/__init__.py` | `7d4a716eb9f072b3e32b3bc88d274826f3ff361ec2697e0a18cbd294685404c7` | 12 |
+| `run_ste_from_preparatory.py` | `766cc8b8f1dc0fe3b86630fbbb6158feb942f447e635c8f739447f0147f5cef9` | 846 |
+| `STE_Lab_User_and_Technical_Manual.html` | `dd3023c901bf783c7aebd468d63dbb914000d7d412ee280747427d7615dce67d` | 625 |
+| `docs/README.md` | `50dabbf35a369fd9056511f80004845a67644d05ac6ca4b625aa6fd2e649524a` | 8 |
+| `ste_lab/__init__.py` | `9ed02e1e4883edaf0670da40f50f8c3ee69f5e555abc8bcc95197f76119e149b` | 13 |
 | `ste_lab/__main__.py` | `3d57e50a898a83eac0cb1ddbf6c181c726bb6ae54d70e66b601c5f37dcde9a6f` | 4 |
-| `ste_lab/calibration.py` | `00717a615b6f7ba533a2db71a5833c441af9dff03a813c63755db2f6fa79eff2` | 884 |
+| `ste_lab/calibration.py` | `4755dd864451cbbbfa43c1b2e66ed0e51470edb5b4eaf8b246f1615c9bbf015f` | 901 |
 | `ste_lab/calibration_export.py` | `317df806ca3e3681c5fec3278a8a91887ef7c4e3f77aff11eeb8b82452b32098` | 492 |
-| `ste_lab/catalog.py` | `be07ad61d85268df7d395a23f0218ca00b11632f259e19fb23e0b5d4a4d2d763` | 268 |
+| `ste_lab/catalog.py` | `ae8aa45af2392006259fd102c3ee4667acadc831ba83b81e80fdafca6e1fd9d3` | 273 |
 | `ste_lab/empirical.py` | `af477263eb39c29bc28504b205e7ab70afc25f04b3dfb5848a231330b7f241c5` | 186 |
-| `ste_lab/evidence.py` | `4385894f91180205abb2848ceb31646aa095c27dbceed76cbddf0361fb6db10a` | 304 |
-| `ste_lab/excel_export.py` | `ee6366252310fe1452d28487e04d1e882ab4d3febc197aec1cd078d271f22438` | 805 |
-| `ste_lab/gui_app.py` | `f3cbb2f8e21a2ddda74daae1def44d4d0339f3e1b1480187aa4e0947b9b722e0` | 882 |
+| `ste_lab/evidence.py` | `871434d5aac3869940163ca65da90901f3d5176204bee1cca35462aea40ff561` | 344 |
+| `ste_lab/excel_export.py` | `d444742d7c500f1b037c1a6c7175d61cd20a2b3e4e8c363b42b8beac913bb606` | 846 |
+| `ste_lab/gui_app.py` | `141834fec66a3b1f4d3fcc49e0265292f686fc1caa4c86fa249b3d8d35f62770` | 882 |
 | `ste_lab/media_format.py` | `81dc71318fbc21ea82f4e557cc87e2fb9585acc14ce04ce875c5a1801d802233` | 104 |
 | `ste_lab/media_policy.py` | `2d5c19f556b2f716e481e2818d4002b2b5909001774339c1dd38440c864a11e5` | 196 |
 | `ste_lab/notes.py` | `36eac89a505901a86dae543d7932eb5ab97e0486545fb343fe7ecdddceb80e5a` | 150 |
 | `ste_lab/paste.py` | `56cb8638fd3fd066453bfb2d7f3e47ad794fc203b3b41523b24b408ffc8f1294` | 283 |
-| `ste_lab/pipeline.py` | `5fe99db4d06af0815a06176335639494201773da08e784bba55aaa109d2046be` | 157 |
+| `ste_lab/pipeline.py` | `1cc16bd78e5a6cd7166491037bb8c81d6626622d87b957143eb457545836eba4` | 156 |
 | `ste_lab/prep_gui.py` | `a4609ef9481d082c0553d4dd5df93008fea3c6c1e7f52e9b4eaa5626a6d059bd` | 473 |
 | `ste_lab/qa.py` | `36bf2f19c58ee92b540e702d2422461307f24653b916c75b1311e196f8d1362b` | 443 |
-| `ste_lab/session.py` | `6f93b0fc887b69c05ab81d12889886c53e63e4cf74200e3c6b43c6175e0bea02` | 198 |
-| `ste_lab/transfer.py` | `a0d6bdd826ef4bad44cda87cb3c72da82cd2465064f10a20a266443e0e929219` | 368 |
-| `ste_lab/zenodo_export.py` | `702eebc2b932b7402167a10d6d53d0fd01036612bdcfef72f6b79abc978b8fa4` | 1614 |
-| `test_calibration.py` | `f0e5154d4aa9666d50bc91ec989b3f413c69aaf548700301f9be79e9b38a319c` | 470 |
+| `ste_lab/relations.py` | `d3c395cd7858e4139241f3b86dea112416c8f3d1dbb4ea063bc16f66f1402a25` | 956 |
+| `ste_lab/session.py` | `755882e7a7716a06fbc38dfaac7da19fef27979ed320f1d95403c6253384cb40` | 205 |
+| `ste_lab/transfer.py` | `90dda158dd9a015d41de650bca954164d111b0e6a31420395d504e2361ef1ac6` | 373 |
+| `ste_lab/validation.py` | `ae81745e629643e5468f3c27009bd8795991be7acddd4236568920bf1d759de9` | 309 |
+| `ste_lab/zenodo_export.py` | `cbd79ac9cc09668d999fe26d6ef8abec89fdb5346cf20429ce94f94088a82e19` | 1647 |
+| `test_calibration.py` | `b12b2592b34b0e302c6cb3ae064b0c67e925f0adda120a8e714c278db6f40b50` | 473 |
 | `test_export_consistency.py` | `6ab6eae2511941514676be32a6346bcd198870678fc51936f04e6ec0679db970` | 539 |
-| `test_pipeline_regression.py` | `31c01f19543b68f486f1d4885829297981a7a891e4f1d4ba616636c2c838600d` | 588 |
-| `test_run_ste_from_preparatory.py` | `d0477d54abda3338edaf2d51bf122ef554ff763a58a2be5d60f22bf4fe91e832` | 652 |
+| `test_pipeline_regression.py` | `1a6df14cfed2166e4124f3c355c370b963687aa5545c5fe18e4ad870432ccb35` | 625 |
+| `test_run_ste_from_preparatory.py` | `eeaa83445c5f25754716e160a987e76512fa1a6707df8bda96fac940b24cc17e` | 1100 |
+| `test_donor_provenance.py` | `5546b0bd90af5e6759830199ee1b1e3a0a1d59d095603f880888e0f54b194065` | 513 |
 
 ---
 
@@ -2376,8 +2458,8 @@ SHA-256 of the working-tree files after the export-consistency documentation pas
 - GitHub: `gh api repos/LuisMRaimundo/Ratio_extrapol`, `gh api .../commits/main`, `git ls-remote https://github.com/LuisMRaimundo/Ratio_extrapol.git`.
 - SciPy 1.13.1 `PchipInterpolator` docstring via `inspect.getdoc` on the installed package.
 - NumPy 2.2.6 behaviour of `numpy.log` (natural log), `numpy.interp` (edge hold), `numpy.median` / `numpy.polyfit` (from installed library, not re-derived).
-- Project `ste_lab/__init__.py` version 1.3.3.
+- Project `ste_lab/__init__.py` version 1.5.5.
 - `STE_Lab_User_and_Technical_Manual.html` (F-061 wording only).
 - Dynamics_extrapol `docs/Dynamics_extrapol_math_formula.md` used **only** as a formatting reference; **no** Dynamics formulae were copied as if they applied here.
 
-The correction pass ran `python -m unittest discover -s . -p "test_*.py"` (116 tests, OK) on synthetic fixtures and the existing suite. It did **not** rerun the research corpus, regenerate historical workbooks, or render StackEdit. Isolated arithmetic checks: $e^{-3}\approx 0.049787$, MIDI(C4)$=60=12(4+1)+0$, $e^{3}\approx 20.0855$. These engineering fixes do **not** establish physical or acoustic validity.
+The 1.5.5 correction pass ran `python -m unittest discover -s . -p "test_*.py"` (148 tests, OK) on synthetic fixtures and the existing suite. It did **not** rerun the research corpus, regenerate historical workbooks, or render StackEdit. Isolated arithmetic checks: $e^{-3}\approx 0.049787$, MIDI(C4)$=60=12(4+1)+0$, $e^{3}\approx 20.0855$. These engineering fixes do **not** establish physical or acoustic validity.

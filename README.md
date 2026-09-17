@@ -2,7 +2,7 @@
 
 Local folder: `Ratio_Extrapol`. GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol).
 
-Python package `ste_lab` (v1.5.4) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
+Python package `ste_lab` (v1.5.5) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
 
 This repository estimates Combined Density Metric (F-061 / `spectral_mass`) curves across technique, collection, and missing notes. It does **not** compute F-061 from audio. Engineering consistency of exports is not a claim of acoustic validity.
 
@@ -33,13 +33,17 @@ The same resolver writes in-memory Media, Zenodo Media, AcousticTable, and Final
 
 Technique transfer still holds edge \(L\). That operator was not changed to match Fill.
 
-## Discovery and missing techniques (v1.5.4)
+## Discovery and missing techniques (v1.5.5)
 
 Extra collections exist to teach a technique that IOWA/Orchidea do not have. \(L=\ln(y/x)\) is taken inside that collection and applied to IOWA/ORCH Media. Absolute Phil/McGill CDM still never enter Media.
 
-Production layers are only `pp`, `mf`, `ff`. A missing CORE dynamic takes the closest same-collection donor on the scale `pp–p–mp–mf–f–ff`. If the only teacher pair is at another dynamic (e.g. Philharmonia `p`), that \(L_{\mathrm{tech}}\) is applied to IOWA/ORCH ordinario at `pp`/`mf`/`ff`. Results stamp `l_donor_dynamic` and `l_invariance` (`held` / `wide` / `untested`; hold threshold \(0.40\) nats). A foreign leftover (Phil `p` when Orchidea already teaches `mf`) is not used. A `p` book is not written.
+Production **outputs** are only `pp`, `mf`, `ff`. Eligible **donor** dynamics are kept independently of those labels (`p`, `mp`, `f`, …). A missing CORE dynamic takes the closest eligible donor on `pp–p–mp–mf–f–ff`. Exact dynamic wins; then smaller scale distance; then more anchors; then ORCH > PHIL > McGill. If the only teacher pair is at another dynamic (e.g. Philharmonia `p`), that \(L_{\mathrm{tech}}\) is applied to IOWA/ORCH ordinario at `pp`/`mf`/`ff`. Results stamp `l_donor_dynamic`. A foreign leftover (Phil `p` when Orchidea already teaches `mf`) is not used. A `p` book is not written.
 
-A compiled path containing `tasto` is the technique **sul tasto**, never `ordinario`. `forced_tech=ordinario` cannot relabel it.
+`l_invariance` is a note-wise diagnostic on shared MIDI inside one collection (`compared` / `single_dynamic` / `insufficient_overlap` / `mixed_collection`). It does **not** decide the transfer. The 0.40 nat cutoff is a reporting heuristic on \(\max_m |L_{d_0}(m)-L_{d_1}(m)|\), not a validated invariance test. Agreement of mean \(L\) is reported separately as `l_mean_L_spread` and is not evidence that the curves are invariant.
+
+Relation provenance (collection, grade, dynamic, source/target condition, anchors) is stored per relation. Legacy preparatory files without a `collection` column infer ORCH/PHIL/McGill only from an unambiguous `evidence_grade`. Ambiguous grades are reported and left unlabelled; they are not forced to McGill.
+
+A compiled path containing `tasto` is the technique **sul tasto**, never `ordinario`. `forced_tech=ordinario` cannot relabel it. Measured sul tasto may teach its own technique.
 
 ## Transfer relations (v1.5.0)
 
