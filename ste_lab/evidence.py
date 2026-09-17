@@ -286,6 +286,12 @@ def _role_note(layer: Layer, role: str, n_m: int) -> str:
             "Context only — not Empirical_ORCH and not Media."
         )
     if role == "prediction":
+        donor = donor_dynamic(layer)
+        if donor and donor != (layer.dynamic or ""):
+            return (
+                f"No Orchidea recordings. L from {donor} transposed via ordinario "
+                f"dynamic ratios onto {layer.dynamic}. Not principal evidence."
+            )
         return "No Orchidea recordings. L is contextual (e.g. Philharmonia). Not principal evidence."
     if role == "inherited_dynamic":
         return f"Relative effect inherited from {donor_dynamic(layer) or 'a donor dynamic'}. Not an independent calibration."

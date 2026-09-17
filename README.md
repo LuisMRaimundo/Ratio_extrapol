@@ -2,7 +2,7 @@
 
 Local folder: `Ratio_Extrapol`. GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol).
 
-Python package `ste_lab` (v1.5.2) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
+Python package `ste_lab` (v1.5.3) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
 
 This repository estimates Combined Density Metric (F-061 / `spectral_mass`) curves across technique, collection, and missing notes. It does **not** compute F-061 from audio. Engineering consistency of exports is not a claim of acoustic validity.
 
@@ -37,7 +37,7 @@ Technique transfer still holds edge \(L\). That operator was not changed to matc
 
 Extra collections exist to teach a technique that IOWA/Orchidea do not have. \(L=\ln(y/x)\) is taken inside that collection and applied to IOWA/ORCH Media. Absolute Phil/McGill CDM still never enter Media.
 
-Production dynamics are only `pp`, `mf`, `ff`. A ratio measured at `p` / `mp` / `f` / `fff` is inventoried, not used as a production teacher and not written as a `p` book.
+Production layers are only `pp`, `mf`, `ff`. If the only teacher pair is at another dynamic (e.g. Philharmonia `p`), that \(L_{\mathrm{tech}}\) is applied to IOWA/ORCH ordinario at `pp`/`mf`/`ff` — the same as transposing arco-normal dynamic ratios onto the effect. Results stamp `l_donor_dynamic`. A `p` book is not written.
 
 A compiled path containing `tasto` is the technique **sul tasto**, never `ordinario`. `forced_tech=ordinario` cannot relabel it.
 

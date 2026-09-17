@@ -68,7 +68,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <p>
     Current project name: <b>Ratio_extrapol</b>. The GUI and package still say “STE Lab” / <code>ste_lab</code> (legacy identifiers).
     One document, two voices: a plain-language user’s guide, then the scientific specification.
-    Package version 1.5.2 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
+    Package version 1.5.3 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
     Two family workflows: bowed strings keep separate effect books; woodwinds use ordinario family-transfer calibration.
     Source workbooks are never overwritten. Genuine compiled Iowa files are merged (longest-file-wins is prohibited).
     Production Media, AcousticTable, and Final_Calibration share one family-specific resolver.
@@ -443,7 +443,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <li><b>Media</b> is family-specific (§5.6). String books: arithmetic mean of populated IOWA/ORCH peers. Woodwind ordinario: default empirical_only; equal_weight / legacy_equal_weight only when selected. A single-source cell is that source, not half of it. Shared string <i>L</i> does <em>not</em> increase evidential strength for the relative effect. Use <code>Summary_Empirical_ORCH</code> for published string technique statistics.</li>
   <li><b>Measured ceiling</b> (violin): MIDI 100. <code>reporting_status = above_measured_ceiling</code>; AcousticTable <code>cell_status = register_extrapolated</code>, <code>validation_status = review_required</code>. Summary_Measured_Range uses only the rows at or below the ceiling (completed grid, not principal evidence).</li>
   <li><b>IOWA effects</b>: no recordings. Every IOWA effect cell is <code>modelled_IOWA_anchored</code>. Evidence_Map is <code>modelled_completion</code> when same-dynamic anchors taught that layer; <code>inherited_dynamic</code> only when a donor (usually mf) was reused.</li>
-  <li><b>Sul tasto and other extra-collection techniques</b>: if IOWA/Orchidea lack a technique, Philharmonia or McGill may teach \(L=\ln(\mathrm{effect}/\mathrm{ordinario})\) at <code>pp</code>/<code>mf</code>/<code>ff</code> only (v1.5.2). Absolute Phil/McGill CDM never enter Media. A nested <code>arco-sul-tasto</code> book is <code>sul tasto</code>, never <code>ordinario</code>. A teacher that exists only at <code>p</code> is inventoried, not a production layer.</li>
+  <li><b>Sul tasto and other extra-collection techniques</b>: if IOWA/Orchidea lack a technique, Philharmonia or McGill may teach \(L=\ln(\mathrm{effect}/\mathrm{ordinario})\) (v1.5.3). If that pair exists only at one dynamic (e.g. <code>p</code>), the same <i>L</i> is applied to IOWA/ORCH ordinario at <code>pp</code>/<code>mf</code>/<code>ff</code> — transposing arco-normal dynamic ratios — and <code>l_donor_dynamic</code> records the teacher. Absolute Phil/McGill CDM never enter Media. A nested <code>arco-sul-tasto</code> book is <code>sul tasto</code>, never <code>ordinario</code>.</li>
   <li><b>Con sordino</b>: if Rebuild finds an Orchidea <code>con-sord</code> tree (cello, violin, bass, …), every recorded dynamic (pp/mf/ff) is Empirical_ORCH and is not modelled. Viola has no Orchidea mute — McGill muted / McGill ordinario is prediction only. Never invented.</li>
   <li><b>Philharmonia / McGill</b>: context layers in STE workbooks; omitted from Zenodo Media and from Empirical_ORCH.</li>
 </ul>
@@ -614,7 +614,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 </ul>
 
 <footer>
-  Ratio_extrapol · package <code>ste_lab</code> v1.5.2 · User manual + technical manual ·
+  Ratio_extrapol · package <code>ste_lab</code> v1.5.3 · User manual + technical manual ·
   <code>C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol</code>.
   Rebuild examples: <code>D:\CORDAS_3\VIOLA 4</code>, <code>D:\CORDAS_3\CELLO</code>, <code>D:\MADEIRAS_2\BASS_CLARINET</code>.
   Analysis companion: <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>.

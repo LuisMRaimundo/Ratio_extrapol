@@ -298,6 +298,11 @@ def load_preparatory(path: Path) -> dict:
                 dyn = str(dyn).strip()
                 if dyn in PRODUCTION_DYNAMICS:
                     anchors_by_dyn[dyn] = _anchors_from(sg)
+            if not anchors_by_dyn:
+                for dyn, sg in g.groupby(g["dynamic"].astype(str).str.strip()):
+                    dyn = str(dyn).strip()
+                    if dyn and dyn.lower() != "nan":
+                        anchors_by_dyn[dyn] = _anchors_from(sg)
         if not anchors_by_dyn:
             if "dynamic" in g.columns:
                 continue
@@ -460,15 +465,13 @@ def run(
                 "IOWA = IOWA_ordinario × exp(L). Shared L is not a second experiment. "
                 "Philharmonia/McGill context columns are not Media. "
                 "If Orchidea lacks a technique at pp/mf/ff, extra-collection L teaches it. "
-                "p/mp/f/fff are not production dynamics."
+                "A single-dynamic teacher (e.g. Phil p) is applied to IOWA/ORCH ordinario "
+                "at pp/mf/ff (arco dynamic ratios) and stamped l_donor_dynamic."
                 + (f" {extra}" if extra else "")
             ),
         )
 
         for dyn in CORE:
-            dyn_anchors = anchors_by_dyn.get(dyn) or anchors
-            same_dyn = bool(anchors_by_dyn.get(dyn)) and dyn in anchors_by_dyn
-            inherited = None if (same_dyn or (dyn == "mf" and empirical)) else "mf"
             iowa_arco = build_layer(
                 instr_id, "IOWA", "ordinario", dyn, arco["IOWA"][dyn],
                 origins.get("IOWA", "measured"),
@@ -487,6 +490,27 @@ def run(
                 prod = next(
                     (r for r in prod_rels if r.target_cond == effect and r.dynamic == "mf" and r.anchors),
                     None,
+                )
+            if prod is None:
+                prod = next(
+                    (r for r in prod_rels if r.target_cond == effect and r.anchors),
+                    None,
+                )
+            donor_dyn = prod.dynamic if prod else dyn
+            dyn_anchors = (
+                anchors_by_dyn.get(dyn)
+                or (anchors_by_dyn.get(donor_dyn) if prod else None)
+                or anchors
+            )
+            same_dyn = bool(anchors_by_dyn.get(dyn)) and dyn in anchors_by_dyn
+            if same_dyn or (dyn == "mf" and empirical and donor_dyn == "mf"):
+                inherited = None
+            else:
+                inherited = donor_dyn
+            if inherited and inherited != dyn:
+                print(
+                    f"  L {effect} {dyn} inherited from {getattr(prod, 'collection', '?')} "
+                    f"{inherited} (arco dynamic ratios)"
                 )
             peers = [
                 r

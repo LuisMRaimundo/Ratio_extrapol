@@ -338,6 +338,50 @@ class TestRunFromPreparatory(unittest.TestCase):
             notes = " ".join(str(v) for v in readme.iloc[:, 1].tolist()).lower()
             self.assertIn("prediction", notes)
 
+    def test_p_only_phil_tasto_inherits_to_core(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "prep.xlsx"
+            out = Path(tmp) / "out"
+            wb = Workbook()
+            arco = wb.active
+            arco.title = "Paste_arco"
+            arco.append(["note", "midi", "IOWA_pp", "IOWA_mf", "IOWA_ff", "ORCH_pp", "ORCH_mf", "ORCH_ff"])
+            rows = (
+                ("C4", 60, 20.0, 22.0, 24.0, 10.0, 11.0, 12.0),
+                ("D4", 62, 21.0, 23.0, 25.0, 10.5, 11.5, 12.5),
+                ("E4", 64, 22.0, 24.0, 26.0, 11.0, 12.0, 13.0),
+            )
+            for rec in rows:
+                arco.append(list(rec))
+            eff = wb.create_sheet("Paste_effects_mf")
+            eff.append(["note", "midi"])
+            for lab, midi, *_ in rows:
+                eff.append([lab, midi])
+            anc = wb.create_sheet("Anchors_all")
+            anc.append(["effect", "evidence_grade", "dynamic", "note", "midi", "sourceCDM", "targetCDM"])
+            pairs = ((60, "C4", 10.0, 8.0), (62, "D4", 11.0, 8.8), (64, "E4", 12.0, 9.6))
+            for midi, lab, src, tgt in pairs:
+                anc.append(["sul tasto", "prediction_Philharmonia", "p", lab, midi, src, tgt])
+            wb.save(path)
+            pack = load_preparatory(path)
+            self.assertIn("sul tasto", [e["name"] for e in pack["effects"]])
+            single = CalibrationConfig(transfer_field_mode="single")
+            with patch("run_ste_from_preparatory.load_config", return_value=single):
+                written = run(path, out, instrument="violin")
+            ste = out / "Violin_STE_sul_tasto_IOWA_ORCH.xlsx"
+            self.assertTrue(ste.exists(), written)
+            iowa_mf = _layer_table(ste, "violin_IOWA_mf")
+            L60 = math.log(8.0 / 10.0)
+            self.assertAlmostEqual(_value_at(iowa_mf, 60), 22.0 * _exp_clip(L60))
+            em = pd.read_excel(ste, sheet_name="Evidence_Map")
+            hit = em[
+                (em["collection"].astype(str).str.upper() == "IOWA")
+                & (em["dynamic"].astype(str) == "mf")
+            ]
+            self.assertFalse(hit.empty)
+            self.assertEqual(str(hit.iloc[0]["l_donor_dynamic"]).strip().lower(), "p")
+            self.assertEqual(str(hit.iloc[0]["evidence_role"]), "prediction")
+
 
 class TestEvidenceStamps(unittest.TestCase):
     def test_iowa_same_dynamic_is_modelled_not_inherited(self):
@@ -736,6 +780,25 @@ class TestTransferRelations(unittest.TestCase):
         self.assertEqual(prod[0].collection, "PHIL")
         self.assertEqual(prod[0].dynamic, "mf")
         self.assertFalse(any(r.dynamic == "p" and r.used_in_production for r in rels))
+
+    def test_single_dynamic_teacher_is_inherited_to_core(self):
+        from ste_lab.relations import catalog_for_discovery, discover_relations, select_production_relation
+
+        curve = {60: 10.0, 62: 11.0, 64: 12.0}
+        tasto = {60: 8.0, 62: 8.8, 64: 9.6}
+        measured = {
+            ("ORCH", "ordinario", "mf"): {"curve": curve},
+            ("PHIL", "ordinario", "p"): {"curve": curve},
+            ("PHIL", "sul tasto", "p"): {"curve": tasto},
+        }
+        catalog = catalog_for_discovery(instrument="violin")
+        rels = discover_relations(measured, catalog)
+        selected = select_production_relation(rels, {"instrument": "violin"})
+        prod = [r for r in selected if r.target_cond == "sul tasto"]
+        self.assertEqual(len(prod), 1)
+        self.assertEqual(prod[0].collection, "PHIL")
+        self.assertEqual(prod[0].dynamic, "p")
+        self.assertTrue(prod[0].used_in_production)
 
     def test_validation_sheets_and_pi95_only_on_overlap(self):
         from ste_lab.relation_export import apply_pi95_for_technique, attach_project_validation

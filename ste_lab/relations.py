@@ -481,7 +481,9 @@ def select_production_relation(relations: list[Relation], config: Optional[dict]
 
     Strings: ORCH technique teacher at pp/mf/ff; else Philharmonia, then McGill.
     Extra-collection L is how a missing technique is transferred onto Media.
-    Dynamics outside {pp, mf, ff} stay on the inventory and are not production.
+    If a technique has no teacher at pp/mf/ff, the best extra-collection pair
+    at any dynamic (e.g. Philharmonia p) is the donor: L_tech is applied to
+    IOWA/ORCH ordinario at the production dynamics (arco dynamic ratios).
     Woodwinds: Iowa L_instr when present, else Philharmonia then McGill;
     L_coll is the IOWA→ORCH pair on the sibling (stored, not multiplied).
     Mutates used_in_production on the selected rows and returns them.
@@ -511,6 +513,23 @@ def select_production_relation(relations: list[Relation], config: Optional[dict]
                 if hits:
                     selected.append(_mark(max(hits, key=lambda r: r.n_anchors)))
                     break
+        have_core = {r.target_cond for r in selected}
+        leftover: dict[str, list[Relation]] = defaultdict(list)
+        for rel in tech:
+            if rel.target_cond in have_core:
+                continue
+            leftover[rel.target_cond].append(rel)
+        for _target, cands in sorted(leftover.items()):
+            chosen = None
+            for coll in ("PHIL", "MCGILL"):
+                hits = [r for r in cands if _norm_coll(r.collection) == coll]
+                if hits:
+                    chosen = max(hits, key=lambda r: r.n_anchors)
+                    break
+            if chosen is None and cands:
+                chosen = max(cands, key=lambda r: r.n_anchors)
+            if chosen:
+                selected.append(_mark(chosen))
         return selected
 
     instr_rels = [r for r in relations if r.kind == "instrument"]
@@ -560,8 +579,6 @@ def production_relations_from_effects(
             collection = "MCGILL"
         by_dyn = spec.get("anchors_by_dyn") or {"mf": spec.get("anchors") or []}
         for dyn, anchors in by_dyn.items():
-            if str(dyn) not in PRODUCTION_DYNAMICS:
-                continue
             out.append(
                 Relation(
                     kind="technique",
