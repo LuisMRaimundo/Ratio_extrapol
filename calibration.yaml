@@ -1,0 +1,28 @@
+# STE Lab calibration policy. Exported with every woodwind result book.
+# Default production mode: do not replace a target-instrument measurement.
+
+transfer:
+  enabled: true
+  # two_log_ratio | legacy_target_calibrated
+  method: two_log_ratio
+
+combination:
+  # empirical_only | equal_weight | fixed_weight | validation_optimised | legacy_equal_weight
+  method: empirical_only
+  empirical_weight: 0.5
+  transfer_weight: 0.5
+
+validation:
+  enabled: true
+  metric: mae
+  min_n: 5
+
+extrapolation:
+  accept_max_semitones: 3
+  review_max_semitones: 6
+  allow_long_extrapolation: false
+  # REVIEW_REQUIRED stays visible but is not production-eligible unless true.
+  allow_review_required: false
+
+disagreement:
+  relative_epsilon: 1.0e-12

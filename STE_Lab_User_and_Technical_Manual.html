@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>STE Lab — User manual and technical manual</title>
+<style>
+:root {
+  --ink: #2B2A26;
+  --muted: #5c5a54;
+  --navy: #1f4e79;
+  --paper: #f7f4ee;
+  --card: #fff;
+  --lay: #e8f2ea;
+  --sci: #e8eef6;
+  --warn: #f8ead6;
+  --line: #d8d5cb;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  background: var(--paper);
+  margin: 0;
+  line-height: 1.55;
+}
+header.cover {
+  background: var(--navy);
+  color: #fff;
+  padding: 36px 48px 28px;
+}
+header.cover h1 { font-weight: 400; font-size: 32px; margin: 0 0 8px; }
+header.cover p { margin: 0; color: #d6e4f0; max-width: 760px; }
+nav {
+  background: #163a5a;
+  padding: 10px 48px;
+  position: sticky; top: 0; z-index: 2;
+  display: flex; flex-wrap: wrap; gap: 14px;
+}
+nav a { color: #d6e4f0; text-decoration: none; font-family: "Segoe UI", sans-serif; font-size: 13px; }
+nav a:hover { color: #fff; }
+main { max-width: 980px; margin: 0 auto; padding: 28px 28px 80px; }
+h2 { font-weight: 400; color: var(--navy); border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-top: 2.2em; }
+h3 { font-weight: 500; font-size: 17px; margin-top: 1.6em; }
+h4 { margin-bottom: 6px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 18px; }
+@media (max-width: 800px) { .pair { grid-template-columns: 1fr; } }
+.box { padding: 12px 14px; border-radius: 2px; }
+.lay { background: var(--lay); }
+.sci { background: var(--sci); }
+.warn { background: var(--warn); }
+.box h4 { margin: 0 0 6px; font-family: "Segoe UI", sans-serif; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+ol.recipe { padding-left: 1.3em; }
+ol.recipe li { margin: 6px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 12px 0; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+th { background: var(--navy); color: #fff; font-weight: 500; }
+code, kbd { font-family: Consolas, monospace; font-size: 13px; background: #eeeae2; padding: 1px 5px; }
+.muted { color: var(--muted); font-size: 14px; }
+footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
+.eq { text-align: center; font-size: 16px; margin: 10px 0 14px; padding: 10px 8px; background: #eef2f7; border-left: 3px solid var(--navy); }
+.eq code { background: transparent; font-size: 14px; }
+.src { font-family: Consolas, monospace; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="cover">
+  <h1>STE Lab — User manual and technical manual</h1>
+  <p>
+    Spectral Technique Extrapolation Laboratory. One document, two voices:
+    a plain-language user’s guide, then the scientific specification.
+    Version 1.3.2 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
+    Two family workflows: bowed strings keep separate effect books; woodwinds use ordinario family-transfer calibration.
+    Source workbooks are never overwritten. Genuine compiled Iowa files are merged (longest-file-wins is prohibited).
+    §5 states the formulas the code evaluates. Help opens this HTML as a local file.
+  </p>
+</header>
+<nav>
+  <a href="#who">Who this is for</a>
+  <a href="#idea">The idea</a>
+  <a href="#user">User manual</a>
+  <a href="#excel">Hands-off Excel</a>
+  <a href="#families">Families</a>
+  <a href="#recipes">Recipes</a>
+  <a href="#formulas">Formulas</a>
+  <a href="#woodwind">Woodwind calibration</a>
+  <a href="#tech">Technical manual</a>
+  <a href="#files">File map</a>
+  <a href="#glossary">Glossary</a>
+  <a href="#trouble">Troubleshooting</a>
+</nav>
+<main>
+
+<h2 id="who">1. Who this is for</h2>
+<p>This folder — <code>C:\Users\lmr20\Desktop\Código extrapolação\Extrapol_data</code> — is the working copy of <b>STE Lab</b>: a small program that takes measured spectral-density numbers for one playing technique and estimates the same numbers for another technique, another collection, or a missing note — without ever pretending the estimate was recorded. It is not the canonical STE product on E: / GitHub; use this folder for Desktop Lab batches and the preparatory Excel runner.</p>
+<p>Read Part A if you want to press the right buttons. Read Part B if you need to defend a number in a paper, a Zenodo deposit, or a thesis chapter. The green boxes and the blue boxes on each topic say the same thing in those two languages.</p>
+
+<h2 id="idea">2. The idea in two languages</h2>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>Imagine you have a list of F-061 numbers for ordinary bowing (arco normal), note by note. For muted playing you only have some of those notes. STE Lab does not invent a new physics and does not claim F-061 is “brightness.” It asks: <em>on the notes we have in both lists, how much did the mute change F-061?</em> Then it applies that same change to the notes we lack. Every invented number is painted as “modelled”, never as “measured.”</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p>Let <i>S(m)</i> be the F-061 Combined Density Metric (spectral mass) of the source technique at sounding MIDI <i>m</i>, and <i>T(m)</i> the same metric for the target technique. On the measured overlap, define the log-ratio field <i>L(m) = ln(T(m)/S(m))</i>. <i>L</i> is interpolated with a monotone cubic (PCHIP) inside the overlap and <b>held constant</b> outside it (no cubic extrapolation). The reconstruction is <i>T̂(m) = S(m) · exp(L̂(m))</i>, with <i>L̂</i> clipped to [−3, 3] as a numerical guard. Origin tags travel with every cell.</p>
+  </div>
+</div>
+
+<div class="box warn">
+  <h4>The one rule that must not be broken</h4>
+  <p>A cell that was filled, transferred, or averaged is never relabelled <code>measured</code>. <b>Principal evidence</b> for a string effect is the sheet <code>Empirical_ORCH</code> (Orchidea cells tagged measured — every recorded dynamic, not only mf). On woodwind ordinario, principal empirical cells are the target-instrument Iowa measurements. Completed-grid Media is a convenience and its rule depends on family (§5.6). Sul tasto is not invented. String rows above the measured-anchor ceiling (violin: MIDI 100, E7) stay visible and are excluded from aggregate summaries. Genuine woodwind Iowa notes above catalog <code>sounding_high</code> are kept.</p>
+</div>
+
+<!-- ===================== USER MANUAL ===================== -->
+<h2 id="user">3. User manual (Part A)</h2>
+
+<h3>3.1 Starting the program</h3>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>Two windows live in this folder. Double-click <code>launch_ste_lab.bat</code> for the full Lab (paste, transfer, export one layer at a time). Double-click <code>run_ste_from_preparatory.bat</code> for the small window that runs every grounded effect from one preparatory Excel. If Windows asks which program to use, choose Python.</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p><code>launch_ste_lab.bat</code> calls <code>ste_lab.gui_app.main</code>. <code>run_ste_from_preparatory.bat</code> with no arguments calls <code>launch_ste_prep.py</code> (small Tk window); with CLI flags it calls <code>run_ste_from_preparatory.py</code> directly. Dependencies: Python 3.10+, pandas, openpyxl, numpy, scipy. <kbd>F1</kbd> or header <b>Help</b> opens the in-app text. <b>Open full manual</b> / <b>Open full Lab manual</b> then opens this HTML with the Windows file association (<code>os.startfile</code> on the real path). A <code>file://</code> URL is not used: this folder name contains accents (<code>Código extrapolação</code>), and Edge treats that URI as a search page.</p>
+  </div>
+</div>
+
+<h3>3.2 The window, left to right</h3>
+<table>
+  <tr><th>Where</th><th>What you do</th></tr>
+  <tr><td>Top bar</td><td>Project name, your name (Operator), free session notes. Help sits on the right.</td></tr>
+  <tr><td>Tab 1 · Identity</td><td>Create a <em>layer</em>: one instrument × collection × technique × dynamic. Example: Violin / ORCH / con sordino / mf.</td></tr>
+  <tr><td>Tab 2 · Insert data</td><td>Type one note, or paste a block from Excel. Notes snap to the chromatic scale (concert pitch).</td></tr>
+  <tr><td>Tab 3 · Extrapolate</td><td>Fill holes, transfer a technique, map across a family, or average two collections.</td></tr>
+  <tr><td>Tab 4 · Export</td><td>Write a Zenodo-style workbook, or import one you already have.</td></tr>
+  <tr><td>Right · Layers + grid</td><td>Every number you placed, with its origin tag. Click a layer to inspect it.</td></tr>
+  <tr><td>Bottom right · QA</td><td>Automatic warnings (IOWA has no mute recordings, harmonics below G5, ceiling, …).</td></tr>
+</table>
+
+<h3>3.3 What is a “layer”?</h3>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>A layer is one column of a thought-experiment: “the violin, in the Orchidea library, muted, played mezzo-forte.” You may have several layers in one session (IOWA muted pp, ORCH muted pp, Media, …). You never mix two dynamics or two techniques in the same layer.</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p>A <code>Layer</code> is a map MIDI → <code>Cell(value, origin, PI95, reporting_status, …)</code>. Identity fields (<code>instrument</code>, <code>collection</code>, <code>technique</code>, <code>dynamic</code>, <code>pitch_basis</code>) are written onto every exported row. <code>sounding_concert</code> is the working pitch basis; written pitch is stored only as optional metadata.</p>
+  </div>
+</div>
+
+<h3>3.4 Putting numbers in (the part people get wrong)</h3>
+<p>Always: <b>Tab 1 → New source layer</b>, then <b>Tab 2</b>. The paste goes into the box labelled <b>Block paste</b>.</p>
+<ul>
+  <li><b>Two columns</b> (note and value), tab- or comma-separated: <code>G3  33.42</code></li>
+  <li><b>Three columns</b>: note, value, origin (<code>measured</code>, <code>modelled_IOWA_anchored</code>, …)</li>
+  <li><b>Values only</b>: a list of numbers. You <em>must</em> set “Start note if the paste is only numbers”, or the program cannot know where G3 is.</li>
+  <li>A bare integer such as <code>72</code> is a <em>value</em>, not MIDI 72. Write <code>midi72</code> if you mean the pitch.</li>
+</ul>
+<p>Buttons: <b>Parse clipboard</b> reads what you copied; <b>Parse box and place</b> commits the box onto the selected layer; <b>Clear</b> empties the box only (the layer is untouched).</p>
+<p><b>If slot occupied:</b> <code>prefer_measured</code> keeps a measured cell when a modelled one arrives; <code>overwrite</code> replaces; <code>skip</code> leaves the old cell.</p>
+
+<h3>3.5 The four extrapolation tools</h3>
+<table>
+  <tr><th>Button</th><th>Plain meaning</th><th>When to use it</th></tr>
+  <tr><td>Fill selected layer</td><td>Guess the missing notes of the <em>same</em> curve.</td><td>Holes inside a measured series. Cap the extrapolation (default 12 semitones).</td></tr>
+  <tr><td>Technique transfer</td><td>Turn an arco list into a mute / ponticello / tasto / harmonics list.</td><td>You have overlap pairs (anchors). Default method: log-ratio.</td></tr>
+  <tr><td>Family transfer</td><td>Copy a curve onto a cousin instrument (clarinet → bass clarinet).</td><td>Same family only. Concert pitch, or align lowest notes.</td></tr>
+  <tr><td>Average layers</td><td>Media of IOWA and ORCH on the same technique and dynamic.</td><td>String effect books: arithmetic mean of peers (historical rule). Woodwind ordinario: a measured target cell wins (<code>empirical_only</code>); transfer fills only a missing cell. One-sided cells are never halved.</td></tr>
+</table>
+<p>Anchors for technique transfer are three numbers per line: <code>note  sourceCDM  targetCDM</code>. Example: <code>G3  40.18  33.42</code> means “at G3, arco was 40.18 and the mute was 33.42”.</p>
+
+<h3>3.6 Export</h3>
+<p>Tab 4 → <b>Generate organised Excel</b>. The file follows schema 1.2.0 (the violin sordino Zenodo book): one sheet per collection × dynamic, a Media sheet with Excel <code>AVERAGE()</code> formulas, AcousticTable, QA_Flags, provenance. Import understands both STE Lab files and the older viola-style books.</p>
+<p>The <b>Media pp / mf / ff</b> columns carry Excel conditional formatting by orchestral family: <span style="background:#BDD7EE;padding:0 6px;">blue = strings</span>, <span style="background:#C6EFCE;padding:0 6px;">green = brass</span>, <span style="background:#F8CBAD;padding:0 6px;">orange = woodwinds</span>. Violin books are therefore blue. A hidden <code>orchestral_group</code> cell next to those columns drives the rule, so a later trumpet or clarinet export recolours itself without a second code path.</p>
+<p>The full Lab is for interactive, one-layer work. For production, prefer the preparatory Excel runner (§3.7). The small window dispatches by family (<code>ste_lab/pipeline.py</code>): strings rebuild effects and write one STE + Zenodo pair per grounded technique plus ordinario; woodwinds rebuild the measured Iowa spine and write the ordinario calibration books. Dedicated <code>run_ste_effects_batch*.py</code> scripts remain on disk (hardcoded deposit paths) and are not called by the GUI.</p>
+
+<h3 id="excel">3.7 Hands-off run from one preparatory Excel</h3>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>You no longer type Tab-3 anchors by hand. A preparatory workbook already holds the arco spines, the measured effect columns, and every overlap pair. Point the small window at that file and a save folder, then <b>Run all effects</b>. Family / instrument / operator / notes are the same labels as the big Lab; they are printed on the books. The effects themselves still come from the Excel.</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p>The GUI and CLI call <code>run_selected_pipeline</code>. <code>pipeline_for_instrument</code> returns <code>strings</code> for violin / viola / cello / double bass and <code>woodwinds</code> for bass clarinet (and other catalog woodwinds). Both paths read <code>Paste_arco</code>, <code>Paste_effects_mf</code> and <code>Anchors_all</code>. Strings: if Orchidea recorded that effect at that dynamic, those cells stay <code>measured</code> and technique-transfer <i>L</i> is not applied to that layer. Woodwind ordinario does not invent string techniques. Harmonics drop notes below the instrument floor. Sul tasto is ignored.</p>
+  </div>
+</div>
+<p>Small window boxes:</p>
+<ul>
+  <li><b>Preparatory Excel</b> — e.g. <code>D:\CORDAS_3\VIOLA 4\Viola_STE_preparatory.xlsx</code></li>
+  <li><b>Save folder</b> — e.g. <code>D:\CORDAS_3\VIOLA 4\Viola_Extrapoled_effects</code></li>
+  <li><b>Family / Instrument, Operator, Session notes</b> — the same labels as the full Lab. They are printed on the exported books. They do not load another instrument’s trees. Changing Instrument from Viola to Cello only changes filenames and layer names.</li>
+  <li><b>Rebuild the preparatory workbook first</b> — remakes the preparatory Excel from the folder in <b>Look in folder</b>, then runs the family pipeline. Changing Instrument suggests a default (viola → <code>D:\CORDAS_3\VIOLA 4</code>, cello → <code>D:\CORDAS_3\CELLO</code>, violin → <code>D:\CORDAS_3\VIOLIN 4</code>, double bass → <code>D:\CORDAS_3\DOUBLE_BASS</code>, bass clarinet → <code>D:\MADEIRAS_2\BASS_CLARINET</code>).</li>
+  <li><b>Look in folder</b> — the deposit Rebuild hunts. Strings: Zenodo <code>*collections*Arco*</code> / <code>*media*</code> book plus Orchidea / Philharmonia / McGill trees (Iowa compiled trees are skipped; Iowa lives on the Zenodo book). Woodwinds: target Iowa compiled trees plus a sibling donor (e.g. Orchidea clarinet + YOWA clarinet). Generated media is written under <code>generated/</code>, never over the source book. Enabled only when Rebuild is ticked.</li>
+  <li><b>Open the save folder when finished</b> — after a successful run, opens that folder in Explorer.</li>
+  <li><b>Log</b> — SEARCH / FOUND / SKIP / USE / READ lines, plus any research-tree warnings.</li>
+</ul>
+<div class="box warn">
+  <h4>Do not mix a cello label with a viola pack</h4>
+  <p>Cello compiled trees and <code>CELLO_Zenodo_collections_Arco_normal.xlsx</code> live under <code>D:\CORDAS_3\CELLO</code>. Tick Rebuild, set Instrument = Cello, set <b>Look in folder</b> to that path (Instrument suggests it), and choose a save folder (not the viola pack). If Rebuild is off and you leave the viola Excel selected, changing Instrument only relabels files — you get viola CDM values named <code>Cello_STE_*.xlsx</code>. Those are not cello results; do not deposit them.</p>
+</div>
+<p>Command line (no window):</p>
+<p><code>python run_ste_from_preparatory.py</code><br/>
+<code>python run_ste_from_preparatory.py --gui</code><br/>
+<code>python run_ste_from_preparatory.py --rebuild-prep --rebuild-root "D:\CORDAS_3\CELLO" --instrument cello</code><br/>
+<code>python run_ste_from_preparatory.py --rebuild-prep --rebuild-root "D:\MADEIRAS_2\BASS_CLARINET" --instrument bass_clarinet --prep "D:\MADEIRAS_2\BASS_CLARINET\Bass_clarinet_in_Bb_STE_preparatory.xlsx" --out "D:\MADEIRAS_2\BASS_CLARINET\Bass_clarinet results"</code><br/>
+<code>python -m pytest test_pipeline_regression.py test_calibration.py test_run_ste_from_preparatory.py</code></p>
+
+<h3 id="families">3.8 Two scientific workflows (do not mix them)</h3>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>Violin, viola, cello and double bass are one kind of job: find every real effect folder (harmonics, sul ponticello, con sordino, …) and write a separate pair of workbooks for each, plus ordinario. Bass clarinet is another kind of job: keep every genuine Iowa note, estimate the missing Orchidea spine from the clarinet family, and never invent a mute or ponticello book.</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p><code>pipeline_for_instrument("viola") == "strings"</code>; <code>pipeline_for_instrument("bass_clarinet") == "woodwinds"</code>. After a string rebuild, <code>assert_string_effects_survived</code> raises <code>DataDiscoveryError</code> if Orchidea effect trees exist and <code>Anchors_all</code> is empty — the run must not silently degrade to ordinario-only. Woodwind <code>two_log_ratio</code> / <code>empirical_only</code> is not applied to string effect books.</p>
+  </div>
+</div>
+<div class="box warn">
+  <h4>Source workbooks are immutable</h4>
+  <p>Rebuild must not save a generated media spine over <code>Bass_clarinet_in_Bb_Zenodo_collections_media.xlsx</code> or any other file used as input in the same run. The generated book is <code>{deposit}/generated/{Display}_generated_media.xlsx</code>. If output.resolve() equals a source path, the code raises <code>RuntimeError("Refusing to overwrite source workbook")</code>.</p>
+</div>
+
+<h2 id="recipes">4. Recipes (do this, then that)</h2>
+
+<h3>4.1 Reconstruct IOWA con sordino from Orchidea measurements</h3>
+<ol class="recipe">
+  <li>Tab 1: source = Violin / IOWA / ordinario / mf → <b>New source layer</b>. Paste IOWA arco mf (from the arco-normal Zenodo Media sheet).</li>
+  <li>Create an ORCH ordinario mf layer and an ORCH con sordino mf layer. Paste those curves. Mark measured cells as <code>measured</code>.</li>
+  <li>Tab 3: select the IOWA ordinario layer. In the Target identity, set technique = con sordino, collection = IOWA. Paste anchors built from notes that exist in both ORCH arco and ORCH sordino.</li>
+  <li>Run <b>technique transfer</b>. The new layer is IOWA sordino, origin <code>modelled_IOWA_anchored</code>.</li>
+  <li>Average IOWA + ORCH sordino mf → Media. Export.</li>
+</ol>
+<p class="muted">Use this recipe only when you change a curve by hand. Production viola / violin / cello / bass books should come from the preparatory Excel or the instrument batch, not from retyping Tab 3.</p>
+
+<h3>4.2 Harmonics</h3>
+<p>Do not publish modelled harmonics below the first practical sounding pitch. Violin: G5 (MIDI 79). Viola: C5 (MIDI 72). Cello: C4 (MIDI 60). Double bass: E3 (MIDI 52). The runners blank those cells. If you fill by hand, the QA panel will object — believe it.</p>
+
+<h3>4.3 Reading the analysis folder</h3>
+<p>The comparative study of the five Zenodo books lives at <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>. Open <code>relatorio_violin_zenodo_comparacao_v2.html</code> for the narrative, and <code>violin_zenodo_comparacao_editavel.xlsx</code> if you need to reuse charts: edit <code>Dados_graficos</code>, the native charts on <code>Graficos_Excel</code> update; <code>Figuras_PNG</code> is a picture album.</p>
+
+<h3>4.4 Things you should not do</h3>
+<ul>
+  <li>Do not treat Philharmonia or McGill as a third vote in Media. They are context, not a TIER peer of IOWA/ORCH in this pipeline.</li>
+  <li>Do not read a modelled pp/ff layer as an independent calibration when Orchidea has no recording at that dynamic. Those layers inherit donor <i>L</i> (usually mf). If Orchidea <em>did</em> record that dynamic (e.g. cello con sordino ff), the ORCH layer is the recording — not inherited <i>L</i>.</li>
+  <li>Do not use a high-register cell of ~0.3 from an older export. That was PCHIP running off the last overlap; current code holds the last L.</li>
+  <li>Do not pool F7–B7 into a geometric mean. They sit above the measured-anchor ceiling.</li>
+  <li>Do not invent viola sul tasto.</li>
+</ul>
+
+<h3>4.5 Viola: all grounded effects from one Excel</h3>
+<ol class="recipe">
+  <li>Open <code>run_ste_from_preparatory.bat</code>. Confirm Preparatory Excel = <code>Viola_STE_preparatory.xlsx</code> and the save folder (usually <code>Viola_Extrapoled_effects</code>).</li>
+  <li>Set Instrument = <b>Viola</b>. Operator and notes are optional labels.</li>
+  <li>Optional: tick <b>Rebuild the preparatory workbook first</b> and set <b>Look in folder</b> to <code>D:\CORDAS_3\VIOLA 4</code> (or <code>python build_ste_preparatory.py --root "D:\CORDAS_3\VIOLA 4" --instrument viola</code>). That remakes the Excel from the trees in that folder.</li>
+  <li>Run all effects. You should get STE + Zenodo books for every grounded effect plus ordinario (this deposit: harmonics and sul ponticello from Orchidea; con sordino from McGill muted as <code>prediction_McGill</code> — there is no Orchidea <code>con-sord</code> tree). There is <b>no</b> sul tasto book.</li>
+  <li>Hand-check: IOWA effect = IOWA arco × exp(<i>L</i>) from <code>Anchors_all</code>. Any Orchidea recording on <code>Paste_effects_mf</code> (<code>ORCH_{effect}_{dynamic}</code>) must appear on the ORCH layer as <code>measured</code>, with no <i>L</i> fill. The log line is <code>ORCH ff recorded n=… (no L)</code>. On Evidence_Map, only ORCH recorded rows are principal; Iowa same-dynamic <i>L</i> is modelled_completion; Phil/McGill are context.</li>
+</ol>
+<p class="muted">Cello / violin / bass: same recipe with Instrument and Look in folder pointed at that deposit (e.g. <code>D:\CORDAS_3\CELLO</code>). Do not leave Look in folder on the viola trees while Instrument says Cello.</p>
+
+<h3>4.6 Bass clarinet (woodwind ordinario)</h3>
+<ol class="recipe">
+  <li>Instrument = <b>Bass clarinet in Bb</b>. Look in folder = <code>D:\MADEIRAS_2\BASS_CLARINET</code>. Save folder = <code>Bass_clarinet results</code>.</li>
+  <li>Tick Rebuild. The run must leave <code>Bass_clarinet_in_Bb_Zenodo_collections_media.xlsx</code> byte-identical. Generated Iowa + transfer spines go under <code>generated/</code>.</li>
+  <li>Every genuine Iowa compiled note (pp / mf / ff) must appear on <code>Measured_Data</code>. Notes above catalog sounding-high (MIDI 77) stay, e.g. 78–82.</li>
+  <li>Expected books: <code>Bass_clarinet_in_Bb_STE_ordinario_IOWA_ORCH.xlsx</code> and <code>Bass_clarinet_in_Bb_Zenodo_collections_ordinario.xlsx</code>, with <code>Final_Calibration</code>, <code>Methodology</code> (<code>two_log_ratio</code>, <code>empirical_only</code>). No harmonics / ponticello / sordino books.</li>
+</ol>
+
+<!-- ===================== FORMULAS ===================== -->
+<h2 id="formulas">5. Processes, methods and formulas (as implemented)</h2>
+<p>This section states the mathematics the code actually evaluates. Symbols match <code>ste_lab/transfer.py</code>, <code>ste_lab/calibration.py</code>, <code>ste_lab/empirical.py</code>, <code>run_ste_from_preparatory.py</code> and <code>build_ste_preparatory.py</code>. Natural logarithms: <code>np.log</code> is ln, not log<sub>10</sub>.</p>
+
+<h3>5.1 Notation</h3>
+<table>
+  <tr><th>Symbol</th><th>Meaning in the code</th></tr>
+  <tr><td><i>m</i></td><td>Sounding concert MIDI (integer).</td></tr>
+  <tr><td><i>S(m)</i></td><td>Source CDM (usually ordinario / arco) at <i>m</i>. Must be &gt; 0.</td></tr>
+  <tr><td><i>T(m)</i></td><td>Measured target-technique CDM at <i>m</i>. Must be &gt; 0.</td></tr>
+  <tr><td><i>L(m)</i></td><td>Log-ratio at an anchor. Python: <code>np.log(target / source)</code>.</td></tr>
+  <tr><td><i>L̂(m*)</i></td><td>Interpolated / held log-ratio at any MIDI <i>m*</i> on the source curve.</td></tr>
+  <tr><td><i>T̂(m*)</i></td><td>Reconstructed target CDM from <i>S · exp(L̂)</i>. Origin stays modelled. Distinct from a recorded Orchidea cell, which is <i>T</i>, not <i>T̂</i>.</td></tr>
+  <tr><td><i>M</i></td><td>Anchor set: pairs with <i>S(m)&gt;0</i> and <i>T(m)&gt;0</i>, sorted by MIDI.</td></tr>
+  <tr><td><i>m</i><sub>lo</sub>, <i>m</i><sub>hi</sub></td><td>min and max MIDI in <i>M</i>.</td></tr>
+  <tr><td><i>d</i></td><td>Dynamic: pp, mf or ff in the preparatory runner.</td></tr>
+</table>
+
+<h3>5.2 Process (order of operations)</h3>
+<ol>
+  <li><b>Locate sources.</b> Strings — IOWA (and arco ORCH spines): Zenodo collections workbook, Media columns <code>IOWA d</code> / <code>ORCH d</code>, else IOWA by-string sheet <code>CDM − Media</code>. Woodwinds — IOWA: every target compiled research book under an Iowa-named tree (plus any Iowa cells already on a source media book, merged). Effects (ORCH / Phil / McGill): <code>*compiled_density_metrics_research.xlsx</code> under a folder whose name contains <code>_sustains_stable</code>; sheet <code>Research_Core</code> else <code>Spectral_Density_Metrics</code>; columns <code>note</code>, <code>spectral_mass</code>.</li>
+  <li><b>Merge every matching compiled book</b> per (collection, technique, dynamic). Longest-file-wins is prohibited. Identical values (relative 10<sup>−6</sup>) collapse and provenance lists all files. Material disagreement → <code>EMPIRICAL_CONFLICT</code>: that MIDI is not silently averaged and is not exported.</li>
+  <li><b>Build anchors</b> on the MIDI intersection of teacher effect and teacher arco (same dynamic). One block per recorded dynamic when Orchidea has pp/mf/ff. Drop <i>m</i> below the harmonics floor when the effect is harmonics. Skip sul tasto.</li>
+  <li><b>Orchidea recorded layer</b> (<code>orchidea_recorded_layer</code>): if a compiled book exists for that instrument × effect × dynamic, copy those cells as <code>measured</code>. Do not apply <i>L</i>, do not fill holes. That recording <em>is</em> the ORCH layer.</li>
+  <li><b>Teach <i>L</i></b> from the anchors of that dynamic (else from mf) for collections that have no recording.</li>
+  <li><b>IOWA (and any unrecorded Orchidea dynamic):</b> <i>T̂ = S · exp(clip L̂)</i> on that collection’s own arco. Origin stays modelled. Same-dynamic anchors are used when ≥ 3 pairs exist; otherwise mf <i>L</i> is inherited (not a new experiment).</li>
+  <li><b>Media:</b> family-specific (§5.6). Strings average available IOWA/ORCH peers. Woodwind ordinario keeps a measured target cell (<code>empirical_only</code>).</li>
+  <li><b>Export</b> STE + Zenodo workbooks. Origin tags travel with every cell. Woodwind ordinario books also receive <code>Measured_Data</code>, <code>Final_Calibration</code>, <code>Validation</code>, <code>Methodology</code>.</li>
+</ol>
+<p>Instrument selects the family runner even when Rebuild is off. It still does not load another deposit’s trees: if the preparatory path contains “viola” and Instrument is cello, the log prints a WARNING and the numbers remain those of that Excel. With Rebuild ticked, discovery hunts <b>Look in folder</b>. Changing Instrument only suggests a default folder.</p>
+
+<h3>5.3 Anchor log-ratio — <code>_safe_log_ratio</code></h3>
+<p class="src">ste_lab/transfer.py · _safe_log_ratio</p>
+<p>If <i>S(m) ≤ 0</i> or <i>T(m) ≤ 0</i>, the pair is discarded. Otherwise:</p>
+<p class="eq"><i>L(m) = ln</i> (<i>T(m)</i> / <i>S(m)</i>) = ln <i>T(m)</i> − ln <i>S(m)</i></p>
+<p>Code: <code>np.log(target / source)</code>. Rebuild stores this <i>L</i> on <code>Anchors_all</code> (one block per recorded dynamic) and on <code>All_effects_mf</code> (<code>L_harmonics</code>, <code>L_ponticello</code>, <code>L_sordino</code> or <code>L_sordino_McGill</code>). Those columns teach IOWA and any unrecorded Orchidea dynamic. They are not applied to a recorded Orchidea layer.</p>
+
+<h3>5.4 Interpolation of <i>L̂</i> — <code>_interp_log_ratio</code></h3>
+<p class="src">ste_lab/transfer.py · _interp_log_ratio · scipy.interpolate.PchipInterpolator</p>
+<p>Let the usable anchors be sorted <i>(m<sub>1</sub>, L<sub>1</sub>), …, (m<sub>n</sub>, L<sub>n</sub>)</i> with <i>n = |M|</i>, <i>m</i><sub>lo</sub> = <i>m</i><sub>1</sub>, <i>m</i><sub>hi</sub> = <i>m</i><sub>n</sub>.</p>
+<table>
+  <tr><th><i>n</i></th><th>Interior <i>m*</i> ∈ [<i>m</i><sub>lo</sub>, <i>m</i><sub>hi</sub>]</th><th>Exterior</th></tr>
+  <tr><td>1</td><td><i>L̂(m*) = L<sub>1</sub></i> for every <i>m*</i></td><td>same constant</td></tr>
+  <tr><td>2</td><td>Linear interpolation: <code>np.interp(m*, [m1, m2], [L1, L2])</code></td><td>hold-edge (below)</td></tr>
+  <tr><td>≥ 3</td><td>Monotone cubic PCHIP (Fritsch–Carlson), <code>extrapolate=False</code></td><td>hold-edge (below)</td></tr>
+</table>
+<p><b>Hold-edge</b> (the code does not continue the last cubic segment):</p>
+<p class="eq"><i>L̂(m*) = L(m</i><sub>lo</sub><i>)</i> &nbsp; if <i>m* &lt; m</i><sub>lo</sub></p>
+<p class="eq"><i>L̂(m*) = L(m</i><sub>hi</sub><i>)</i> &nbsp; if <i>m* &gt; m</i><sub>hi</sub></p>
+<p>PCHIP with <code>extrapolate=True</code> was retired. It produced <i>L ≈ −20…−40</i> off the last pair; after the clip below that became <i>S · e<sup>−3</sup> ≈ 0.05 S</i> (the near-zero high notes).</p>
+
+<h3>5.5 Reconstruction — <code>technique_transfer</code> / <code>transfer_or_copy</code></h3>
+<p class="src">ste_lab/transfer.py · technique_transfer &nbsp;|&nbsp; np.exp(np.clip(L, −3, 3))</p>
+<p>For every MIDI <i>m*</i> that exists on the <em>source</em> layer:</p>
+<p class="eq"><i>r(m*) = exp</i> ( clip(<i>L̂(m*)</i>, −3, 3) )</p>
+<p class="eq"><i>T̂(m*) = S(m*) · r(m*)</i></p>
+<p>clip is <code>numpy.clip</code>: <i>L̂</i> is replaced by −3 if <i>L̂ &lt; −3</i>, by +3 if <i>L̂ &gt; 3</i>. The cell is dropped if <i>T̂</i> is not finite or <i>T̂ ≤ 0</i>.</p>
+<p>Equivalent reporting identity (not stored as a separate column in the runner):</p>
+<p class="eq">100 · (<i>T̂</i>/<i>S</i> − 1) = 100 · ( <i>e</i><sup>clip(<i>L̂</i>,−3,3)</sup> − 1 ) %</p>
+<p>The preparatory runner calls this with <code>copy_anchors=False</code> for <b>IOWA</b> and for an Orchidea dynamic that was <em>not</em> recorded: even at an anchor MIDI, <i>T̂ = S · r</i>, origin <code>modelled_IOWA_anchored</code> / <code>modelled_ORCHIDEA_anchored</code>.</p>
+<p class="src">run_ste_from_preparatory.py · orchidea_recorded_layer</p>
+<p><b>Orchidea recorded (any instrument, effect, dynamic):</b> if <code>Paste_effects_mf</code> has a column <code>ORCH_{slug}_{d}</code> with cells, the ORCH layer is exactly those cells:</p>
+<p class="eq"><i>T(m, d) = T</i><sub>meas</sub><i>(m, d)</i>, origin = <code>measured</code></p>
+<p>No <i>L</i>, no hole-fill. Harmonics still drop <i>m</i> below the instrument floor. Sul tasto columns are ignored.</p>
+<p><b>Unrecorded Orchidea dynamic</b> (typical harmonics / ponticello pp and ff; viola mute): reuse the donor (usually mf) or same-dynamic anchor field on that dynamic’s arco:</p>
+<p class="eq"><i>T̂(m, d) = S(m, d) · exp</i>( clip(<i>L̂</i><sub>donor or d</sub><i>(m)</i>, −3, 3) )</p>
+<p>That inherited ratio is a transfer identity, not a new dynamic calibration.</p>
+<p><b>Harmonics floor:</b> any cell with <i>m &lt; m</i><sub>floor</sub> is deleted after transfer. Preparatory runner follows Instrument: violin 79, viola 72, cello 60, double bass 52.</p>
+
+<h3>5.6 Media — <code>media_of</code> (family-specific)</h3>
+<p class="src">ste_lab/transfer.py · media_of(prefer_measured=…) &nbsp;|&nbsp; run_ste_from_preparatory._export_ordinario_spine</p>
+<p><b>Bowed-string effect and ordinario books</b> (<code>prefer_measured=False</code>, the historical rule). At each MIDI <i>m</i>, let <i>V(m) = { v<sub>j</sub>(m) }</i> be the IOWA/ORCH cells present there. Let <i>k = |V(m)|</i>.</p>
+<p class="eq"><i>μ(m) = (1/k) Σ<sub>j=1</sub><sup>k</sup> v<sub>j</sub>(m)</i></p>
+<p>If only one collection has <i>m</i>, <i>μ(m)</i> equals that value (not half of it). Origin is <code>generated</code> when <i>k &gt; 1</i>, else the single source origin. Shared technique-transfer <i>L̂</i> means <i>μ</i> is not a second independent estimate of the effect.</p>
+<p><b>Woodwind ordinario</b> (<code>prefer_measured=True</code>, <code>empirical_only</code>). If any present cell is origin <code>measured</code>, that measurement is kept and transfer is ignored at that MIDI. Transfer fills only a genuinely missing target cell. The comment on the Media cell is <code>empirical_only (woodwind)</code>. Do not change string Media mathematics to match this wording.</p>
+<p>Zenodo Media sheets use Excel <code>AVERAGE</code> of the same pair, with <code>IF(COUNT=0,"")</code>, on the values that were written into the collection columns.</p>
+
+<h3>5.7 Other methods (full Lab only; not the preparatory runner)</h3>
+<p><b>Global linear ratio</b> (<code>method="linear_ratio"</code>):</p>
+<p class="eq"><i>ρ = median<sub>i ∈ M</sub></i> ( <i>T(m<sub>i</sub>)</i> / <i>S(m<sub>i</sub>)</i> )</p>
+<p class="eq"><i>T̂(m*) = T(m*)</i> if <i>m*</i> is an anchor, else <i>S(m*) · ρ</i></p>
+<p><b>Family transfer, concert pitch:</b> same MIDI; scale = median of overlap ratios if anchors were given, else 1.</p>
+<p class="eq"><i>T̂(m) = S(m) · ρ</i><sub>family</sub></p>
+<p><b>Family transfer, register-relative:</b></p>
+<p class="eq"><i>m'</i> = <i>m</i><sub>target low</sub> + (<i>m</i> − <i>m</i><sub>source low</sub>)</p>
+<p class="eq"><i>T̂(m') = S(m) · ρ</i><sub>family</sub></p>
+<p><b>Fill missing notes on one layer</b> (<code>fill_missing</code>), default method <code>pchip</code> on the <em>CDM values</em> (not on <i>L</i>), <code>extrapolate=True</code>, grid capped at ± <code>max_extrap_semitones</code> (default 12) beyond the last known MIDI. Alternatives: linear <code>np.interp</code>; polynomial <code>np.polyfit</code> / <code>np.polyval</code> of chosen degree. The preparatory runner does not call <code>fill_missing</code>.</p>
+
+<h3>5.8 What the code does not compute</h3>
+<ul>
+  <li>No invented viola sul tasto (no teacher pairs → no <i>L</i>).</li>
+  <li>No <i>L</i> on an Orchidea layer that was recorded (any instrument × effect × dynamic).</li>
+  <li>No second <i>L</i> from IOWA (IOWA has no effect recordings).</li>
+  <li>No pooling of Philharmonia or McGill into Media.</li>
+  <li>No cubic extrapolation of <i>L</i> beyond the last anchor.</li>
+  <li>String rebuild does not read Iowa <code>_Sustains_Stable</code> trees (Iowa remains on the Zenodo book). Woodwind rebuild <em>does</em> read target Iowa compiled trees and merges them.</li>
+  <li>No overwrite of a source workbook. No silent drop of a genuine compiled Iowa note merely because another file is longer or a note sits above catalog <code>sounding_high</code>.</li>
+  <li>No <code>orchidea_family_transfer_estimate</code> / <code>two_log_ratio</code> on ordinary string technique books.</li>
+</ul>
+
+<h3 id="woodwind">5.9 Woodwind family-transfer calibration (ordinario only)</h3>
+<p class="src">ste_lab/calibration.py · two_log_ratio_transfer · combine_empirical_and_modelled &nbsp;|&nbsp; calibration.yaml</p>
+<p>Activated only when <code>orchestral_group(instrument) == "woodwinds"</code> on the ordinario export. Default config: <code>transfer.method = two_log_ratio</code>, <code>combination.method = empirical_only</code>. The 1.2.8 scalar median is retained only as <code>legacy_target_calibrated</code> and is labelled <code>COMBINED_ESTIMATE</code>, never <code>TRANSFERRED</code>.</p>
+<p>Let the sibling (Bb clarinet) supply Iowa and Orchidea, and the target (bass clarinet) supply Iowa:</p>
+<p class="eq"><i>L</i><sub>coll</sub><i>(m) = ln</i>(ORCH<sub>cl</sub><i>(m)</i> / IOWA<sub>cl</sub><i>(m)</i>)</p>
+<p class="eq"><i>L</i><sub>instr</sub><i>(m) = ln</i>(IOWA<sub>target</sub><i>(m)</i> / IOWA<sub>cl</sub><i>(m)</i>)</p>
+<p class="eq">ORCH<sub>target</sub><i>(m) =</i> ORCH<sub>cl</sub><i>(m) × exp</i>( clip(<i>L</i><sub>instr</sub><i>(m)</i>, −3, 3) )</p>
+<p><i>L</i><sub>coll</sub> and <i>L</i><sub>instr</sub> use the same hold-edge interpolator as technique transfer (§5.4). Iowa used to form <i>L</i><sub>instr</sub> is excluded from transfer validation. If there is no same-collection sibling overlap, <i>L</i><sub>instr</sub> is <code>UNDETERMINED</code> and no transfer cells are written.</p>
+<p><code>empirical_only</code>: a finite measured target value is the final value (weight 1 / 0). Transfer is used only when that cell is missing. Do not average a measurement with a transfer estimate unless <code>legacy_equal_weight</code> is explicitly selected.</p>
+<p>QA on <code>Final_Calibration</code>: HIGH / MODERATE are production-eligible; REVIEW_REQUIRED is visible but <code>Accepted_Final=FALSE</code> unless <code>allow_review_required</code> is true (default false); distance &gt; 6 semitones is REJECTED. The notation catalog range (bass clarinet sounding 34–77) is not permission to delete a genuine measurement. The export grid is the catalog specification union the measured extrema.</p>
+
+<!-- ===================== TECHNICAL MANUAL ===================== -->
+<h2 id="tech">6. Technical manual (implementation notes)</h2>
+
+<h3>6.1 The metric</h3>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>The number on every sheet is “how much sound-stuff is piled up in the spectrum” for a long, stable note. It is not loudness in decibels and not a count of harmonics by eye. Bigger means a denser, more populated spectrum. A mute usually makes it a little smaller; ponticello usually makes it larger; a natural harmonic makes it clearly smaller.</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p>Working name: Combined Density Metric, research identifier <b>F-061</b>, stored as <code>spectral_mass</code> on <code>Spectral_Density_Metrics</code> / <code>Research_Core</code>. Unit in AcousticTable: <code>cdm_technique_sustain_v1</code>. It is <em>not</em> the older Legacy “Combined Density Metric” column (Orchidea G3 pp sordino is 33.42 on F-061 and ~22.5 on Legacy). Always read F-061 when pairing with the Zenodo ORCH series.</p>
+  </div>
+</div>
+
+<h3>6.2 Pitch, MIDI, enharmonics</h3>
+<p>Working grid is sounding concert pitch. Spelling prefers flats (Ab, Eb) to match the Zenodo books. <code>parse_pitch</code> accepts <code>G3</code>, <code>Ab3</code>, <code>G#3</code>, <code>midi55</code>. Chromatic snap: a pasted note that is 14 cents sharp of G4 is stored as G4 (MIDI 67), not as a free-frequency row. Family transfer may use <code>concert_pitch</code> (shared sounding MIDI) or <code>register_relative</code> (align lowest sounding notes, then walk by index).</p>
+
+<h3>6.3 Log-ratio transfer (summary)</h3>
+<p>The identities evaluated by the code are written out in <a href="#formulas">§5</a>. Short form (strings): recorded Orchidea cells stay <i>T<sub>meas</sub></i>; otherwise <i>L = ln(T/S)</i> on anchors; <i>L̂</i> by PCHIP (or linear / constant) with hold-edge; <i>T̂ = S · exp(clip(L̂, −3, 3))</i>. Same-dynamic pairing is mandatory. <code>copy_anchors=False</code> on IOWA and on unrecorded Orchidea dynamics. Woodwind ordinario uses the two-log-ratio family transfer in §5.9, not this technique-transfer <i>L</i>.</p>
+
+<h3>6.4 Media, ceiling, evidence</h3>
+<ul>
+  <li><b>F-061</b> is the project Combined Density Metric (spectral-density descriptor on sustains). It is not brightness, brilliance, “spectral richness,” or a count of audible harmonics. Report “F-061 decreased by x%,” then interpret with other descriptors if needed.</li>
+  <li><b>Empirical_ORCH</b> (principal evidence on string books) = Orchidea cells whose Estimate is <code>measured</code>, at every dynamic that was recorded. Sul tasto does not appear. A dynamic that only inherited donor <i>L</i> does not appear there. On woodwind ordinario books the principal empirical sheet is target Iowa (<code>Measured_Data</code>), not a fake Orchidea recording of this instrument.</li>
+  <li><b>Evidence_Map</b> lists IOWA / ORCH / Phil / McGill effect layers with <code>n_measured</code>, <code>n_modelled</code>, and <code>evidence_role</code> (empirical / inherited_dynamic / prediction / modelled_completion / context). <code>principal_evidence</code> is yes only for recorded Orchidea. Iowa that used same-dynamic <i>L</i> is <code>modelled_completion</code>, not inherited. Philharmonia and McGill are <code>context</code> — never principal.</li>
+  <li><b>Media</b> is family-specific (§5.6). String books: AVERAGE of populated IOWA/ORCH peers. Woodwind ordinario: measured target wins; transfer fills a gap. A single-source cell is that source, not half of it. Shared string <i>L</i> does <em>not</em> increase evidential strength for the relative effect. Use <code>Summary_Empirical_ORCH</code> for published string technique statistics.</li>
+  <li><b>Measured ceiling</b> (violin): MIDI 100. <code>reporting_status = above_measured_ceiling</code>; AcousticTable <code>cell_status = register_extrapolated</code>, <code>validation_status = review_required</code>. Summary_Measured_Range uses only the rows at or below the ceiling (completed grid, not principal evidence).</li>
+  <li><b>IOWA effects</b>: no recordings. Every IOWA effect cell is <code>modelled_IOWA_anchored</code>. Evidence_Map is <code>modelled_completion</code> when same-dynamic anchors taught that layer; <code>inherited_dynamic</code> only when a donor (usually mf) was reused.</li>
+  <li><b>Sul tasto</b>: violin may use Philharmonia piano tasto / piano ordinario as a <em>prediction</em>. Viola has no Philharmonia tasto tree — the preparatory runner skips any tasto rows and does not write a tasto book. Do not invent viola sul tasto.</li>
+  <li><b>Con sordino</b>: if Rebuild finds an Orchidea <code>con-sord</code> tree (cello, violin, bass, …), every recorded dynamic (pp/mf/ff) is Empirical_ORCH and is not modelled. Viola has no Orchidea mute — McGill muted / McGill ordinario is prediction only. Never invented.</li>
+  <li><b>Philharmonia / McGill</b>: context layers in STE workbooks; omitted from Zenodo Media and from Empirical_ORCH.</li>
+</ul>
+
+<h3>6.5 Origin vocabulary</h3>
+<table>
+  <tr><th>Origin</th><th>Meaning</th></tr>
+  <tr><td><code>measured</code></td><td>Copied from a research workbook (F-061) or a live paste you marked measured.</td></tr>
+  <tr><td><code>modelled_IOWA_anchored</code></td><td>IOWA_ordinario × exp(L̂), L̂ taught on another collection’s overlap.</td></tr>
+  <tr><td><code>modelled_ORCHIDEA_anchored</code></td><td>ORCH hole or missing dynamic: ORCH_ordinario × exp(L̂).</td></tr>
+  <tr><td><code>technique_transfer</code></td><td>Generic transfer tag when a more specific modelled_* tag was not applied.</td></tr>
+  <tr><td><code>interpolated</code> / <code>extrapolated_*</code></td><td>Fill-missing on the same layer.</td></tr>
+  <tr><td><code>family_transfer</code></td><td>Mapped from a cousin instrument (full Lab).</td></tr>
+  <tr><td><code>orchidea_family_transfer_estimate</code></td><td>Woodwind ORCH spine: <code>two_log_ratio</code> estimate, not a recording of this instrument.</td></tr>
+  <tr><td><code>combined_estimate</code></td><td>Deprecated 1.2.8 scalar donor×median. Never labelled TRANSFERRED.</td></tr>
+  <tr><td><code>generated</code></td><td>String Media or other derived layer; not a field recording.</td></tr>
+  <tr><td><code>EMPIRICAL_CONFLICT</code></td><td>Same MIDI, materially different compiled values. Not averaged; not exported.</td></tr>
+</table>
+
+<h3>6.6 Comparative analysis (análise_v2)</h3>
+<p>Folder: <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>. Rebuild: <code>python _build_violin_analysis_v2.py</code>.</p>
+<div class="pair">
+  <div class="box lay">
+    <h4>In plain words</h4>
+    <p>The analysis folder can line the five approaches up and compare F-061 to ordinary bowing. Treat Media headlines as a completed-grid description. For a paper, quote Empirical_ORCH (measured Orchidea) and keep tasto / inherited dynamics in a prediction section.</p>
+  </div>
+  <div class="box sci">
+    <h4>For the specialist</h4>
+    <p>Paired field on collection × dynamic × MIDI. Primary support G3–E7 (MIDI 55–100). Comparative support G5–E7 so harmonics enter. Aggregates: geometric mean of ratios = exp(mean <i>L</i>). Uncertainty: 3000-draw bootstrap percentile CI on mean <i>L</i>, mapped back to percent. Registral trend: Theil–Sen of <i>L</i> (and of ln CDM for arco). Pairwise: Wilcoxon signed-rank on paired notes; effect size Cliff’s δ. Omnibus: Friedman on the five Media-mf L-curves. Fingerprints: PCA and average-linkage RMSE of L(midi). Arco is included as the identity <i>L ≡ 0</i> and as its own absolute-CDM series.</p>
+  </div>
+</div>
+<p>Completed-grid Media mf (not principal evidence): ponticello +10.8% on G3–E7; sordino −5.0%; tasto +2.9% (prediction); harmonics −19.0% on G5–E7. Prefer the measured Orchidea mf figures: sordino about −6.5% (n≈42), ponticello about +6.6% (n≈37), harmonics about −18.7% (n≈18). Those are F-061 shifts, not “19% less richness.”</p>
+
+<h3>6.7 Software map</h3>
+<table>
+  <tr><th>Module</th><th>Role</th></tr>
+  <tr><td><code>ste_lab/gui_app.py</code></td><td>Full Lab window. Help / F1; <b>Open full manual</b> uses <code>os.startfile</code> on this HTML.</td></tr>
+  <tr><td><code>ste_lab/session.py</code></td><td>Project, Layer, Cell.</td></tr>
+  <tr><td><code>ste_lab/paste.py</code></td><td>Block parser, chromatic snap.</td></tr>
+  <tr><td><code>ste_lab/notes.py</code></td><td>MIDI ↔ label, flats preferred.</td></tr>
+  <tr><td><code>ste_lab/pipeline.py</code></td><td>Family dispatch: <code>pipeline_for_instrument</code>, <code>run_string_pipeline</code>, <code>run_woodwind_pipeline</code>, <code>DataDiscoveryError</code>.</td></tr>
+  <tr><td><code>ste_lab/empirical.py</code></td><td>MeasuredObservation merge; conflict policy; <code>assert_not_source</code>.</td></tr>
+  <tr><td><code>ste_lab/calibration.py</code></td><td>Woodwind <code>two_log_ratio</code>, <code>empirical_only</code>, QA grades. Not used on string effect books.</td></tr>
+  <tr><td><code>ste_lab/calibration_export.py</code></td><td>Woodwind sheets: Measured_Data, Transfer_Estimates, Validation, Final_Calibration, Methodology.</td></tr>
+  <tr><td><code>ste_lab/transfer.py</code></td><td>Fill, technique transfer (hold-edge L), family transfer, <code>media_of(prefer_measured=…)</code>.</td></tr>
+  <tr><td><code>ste_lab/evidence.py</code></td><td>Evidence roles (empirical / inherited / modelled / context / prediction). Principal evidence is Orchidea measured only. Same-dynamic Iowa is not stamped inherited.</td></tr>
+  <tr><td><code>ste_lab/qa.py</code></td><td>Audit flags (including shared-L Media, tasto prediction, inherited dynamics).</td></tr>
+  <tr><td><code>ste_lab/excel_export.py</code></td><td>STE workbook in / out.</td></tr>
+  <tr><td><code>ste_lab/zenodo_export.py</code></td><td>Schema 1.2.0 deposit layout.</td></tr>
+  <tr><td><code>run_ste_effects_batch.py</code></td><td>Shared loaders, IOWA Zenodo audit, compiled-tree audit. Violin (CORDAS_2) batch. Not called by the GUI.</td></tr>
+  <tr><td><code>run_ste_effects_batch_viola.py</code> / <code>_violin4.py</code> / <code>_cello.py</code> / <code>_double_bass.py</code></td><td>Deposit-specific CLIs (hardcoded paths). Kept; not the GUI path.</td></tr>
+  <tr><td><code>build_ste_preparatory.py</code></td><td>Rebuild <code>{Instrument}_STE_preparatory.xlsx</code>. Merges compiled books. Woodwind media → <code>generated/</code>.</td></tr>
+  <tr><td><code>build_viola_ste_preparatory.py</code></td><td>Thin wrapper: same as <code>--root "D:\CORDAS_3\VIOLA 4" --instrument viola</code>.</td></tr>
+  <tr><td><code>run_ste_from_preparatory.py</code></td><td>CLI entry. <code>--rebuild-prep</code> goes through <code>run_selected_pipeline</code>. <code>orchidea_recorded_layer</code> copies recorded ORCH (effect, dynamic).</td></tr>
+  <tr><td><code>ste_lab/prep_gui.py</code> / <code>launch_ste_prep.py</code></td><td>Small window. <code>_run</code> calls <code>run_selected_pipeline</code>. Help / F1; <b>Open full Lab manual</b> uses <code>os.startfile</code>.</td></tr>
+  <tr><td><code>test_run_ste_from_preparatory.py</code></td><td>String L identity, hold-edge, harmonics floor, skip tasto, recorded ORCH, Evidence_Map.</td></tr>
+  <tr><td><code>test_calibration.py</code></td><td>Woodwind <code>two_log_ratio</code>, <code>empirical_only</code>, QA, ln_RMSE.</td></tr>
+  <tr><td><code>test_pipeline_regression.py</code></td><td>Family dispatch, Iowa merge, source immutability, notes beyond catalog range, string 8-file contract.</td></tr>
+</table>
+
+<h3>6.8 How rebuild finds Excel, sheet and column</h3>
+<p>The hunt is family-specific. String Iowa is never sought in <code>_Sustains_Stable</code>. Woodwind Iowa <em>is</em> sought there.</p>
+<table>
+  <tr><th>Source</th><th>Where</th><th>Sheet / column</th></tr>
+  <tr><td>IOWA (strings)</td><td>Zenodo collections workbook for that instrument</td><td>Media sheet: <code>IOWA pp</code> / <code>IOWA mf</code> / <code>IOWA ff</code>. If a Media column is empty, the matching by-string sheet (<code>…IOWA_mf</code> etc.): <code>Source note</code> + <code>CDM - Media</code>.</td></tr>
+  <tr><td>IOWA (woodwinds)</td><td>Target-instrument Iowa compiled trees (folder name contains / ends with <code>iowa</code>), merged with Iowa cells already on a source media book if that book exists</td><td>Compiled <code>Research_Core</code> or <code>Spectral_Density_Metrics</code>: <code>note</code>, <code>spectral_mass</code>. Sibling clarinet Iowa (e.g. <code>YOWA_Clarinete</code>) is a donor for <i>L</i><sub>instr</sub>, not written as this instrument.</td></tr>
+  <tr><td>ORCH / Phil / McGill effects</td><td>Folder trees under the instrument deposit</td><td>Files whose name <em>ends with</em> <code>compiled_density_metrics_research.xlsx</code>. Sheet <code>Research_Core</code>, else <code>Spectral_Density_Metrics</code>. Columns <code>note</code> and <code>spectral_mass</code>.</td></tr>
+  <tr><td>Arco / media spines (strings)</td><td>Same Zenodo book as IOWA</td><td>e.g. <code>VIOLA_Media</code>, <code>Violin_Media</code>, <code>Cello_Media</code>, <code>DBass_Media</code>.</td></tr>
+  <tr><td>Generated woodwind media</td><td><code>{deposit}/generated/{Display}_generated_media.xlsx</code></td><td>Target Media sheet. Never the source <code>*Zenodo_collections*media.xlsx</code>.</td></tr>
+</table>
+<p>Rebuild hunts <b>Look in folder</b> (or <code>--rebuild-root</code>). It lists immediate children: a folder whose name contains <code>orch</code> / <code>orchidea</code> (technique subfolders <code>harmonics</code>, <code>sul-ponticello</code>, <code>ordinario</code>, <code>con-sord</code>, …), plus <code>Philharmonia_*</code> and <code>McGill_*</code>. String Iowa trees and all <code>sul-tasto</code> folders are skipped. Woodwind Iowa trees are kept; sibling-family folders (e.g. Bb clarinet inside a bass-clarinet deposit) are donors, not the target. Files named <code>*_generated_media*</code> or sitting under <code>generated/</code> are not treated as source Zenodo books. Technique and dynamic come from folder names (<code>mezzo-forte</code> → mf; McGill without a dynamic folder → mf). Raw <code>_Sustains</code> is skipped; <code>_Sustains_Stable</code> is kept. Every matching compiled book is merged (§5.2). Example viola trees: <code>ORCH_VLA\{sul-ponticello,harmonics,ordinario}</code>, <code>Philharmonia_viola</code>, <code>McGill_viola</code>. Example bass-clarinet trees: <code>BASS_CLARINET_IOWA</code>, <code>McGill_CLARINET_BASS</code>, <code>Philharmonia_bass clarinet</code>; donors <code>Orchidea_Clarinete</code>, <code>YOWA_Clarinete</code>.</p>
+<p>IOWA Zenodo books:</p>
+<ul>
+  <li>Viola — <code>D:\CORDAS_3\VIOLA 4\VIOLA_Zenodo_collections_Arco_normal.xlsx</code></li>
+  <li>Violin — <code>…\VIOLIN 4\VIOLIN_Zenodo_collections_Arco_normal.xlsx</code> (also CORDAS_2 sibling)</li>
+  <li>Cello — <code>D:\CORDAS_3\CELLO\CELLO_Zenodo_collections_Arco_normal.xlsx</code></li>
+  <li>Double bass — <code>D:\CORDAS_3\DOUBLE_BASS\DOUBLEBASS_Zenodo_collections_Arco_normal.xlsx</code></li>
+  <li>Bass clarinet — source <code>D:\MADEIRAS_2\BASS_CLARINET\Bass_clarinet_in_Bb_Zenodo_collections_media.xlsx</code> (read-only). Generated spine: <code>generated\Bass_clarinet_in_Bb_generated_media.xlsx</code>.</li>
+</ul>
+<p>After rebuild, the runner reads the <em>preparatory</em> workbook written in that folder (<code>{Instrument}_STE_preparatory.xlsx</code>), not the trees. It finds the header row that contains <code>note</code> or <code>effect</code>, so a caption line above the table is harmless. Folder names such as <code>_Sustains_Stable_VLC_ORCHIDEA</code> count as Stable (the token <code>_sustains_stable</code> is a substring).</p>
+
+<h3>6.9 Safeguards and tests</h3>
+<p>Rebuild <b>warns</b> (does not stop) when:</p>
+<ul>
+  <li>a listed research tree is missing, has no <code>_Sustains_Stable</code>, or a Stable folder has no compiled research book;</li>
+  <li>compiled books sit only under raw <code>_Sustains</code> (those are skipped);</li>
+  <li>the IOWA Zenodo workbook is missing, has no Media sheet, lacks <code>IOWA pp/mf/ff</code>, or lacks a by-string IOWA sheet with CDM values.</li>
+</ul>
+<p>The small window shows the same warnings after Rebuild. A string deposit with Orchidea effect trees and an empty <code>Anchors_all</code> now <b>stops</b> (<code>DataDiscoveryError</code>) instead of continuing as ordinario-only.</p>
+<p>Tests (from this folder):</p>
+<p><code>python -m pytest test_pipeline_regression.py test_calibration.py test_run_ste_from_preparatory.py</code></p>
+<p>They check string <i>T̂ = S · exp(L)</i>, hold-edge L, harmonics floor, skip tasto, recorded Orchidea staying <code>measured</code>, Evidence_Map stamps, woodwind <code>two_log_ratio</code> / <code>empirical_only</code>, Iowa multi-file union, source-hash immutability, notes beyond catalog <code>sounding_high</code>, and the eight-file string contract (harmonics / sul ponticello / con sordino / ordinario × STE + Zenodo).</p>
+
+<h2 id="files">7. File map (this Desktop folder)</h2>
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td><code>launch_ste_lab.bat</code> / <code>.py</code></td><td>Full Lab window.</td></tr>
+  <tr><td><code>run_ste_from_preparatory.bat</code></td><td>Small window (no args) or CLI (with flags).</td></tr>
+  <tr><td><code>launch_ste_prep.py</code></td><td>Entry for the small window.</td></tr>
+  <tr><td><code>run_ste_from_preparatory.py</code></td><td>CLI; family dispatch via <code>run_selected_pipeline</code>.</td></tr>
+  <tr><td><code>build_ste_preparatory.py</code></td><td>Remake a preparatory pack from a chosen folder.</td></tr>
+  <tr><td><code>build_viola_ste_preparatory.py</code></td><td>Remake the viola preparatory pack (wrapper).</td></tr>
+  <tr><td><code>ste_lab/pipeline.py</code></td><td>String vs woodwind runner selection.</td></tr>
+  <tr><td><code>test_run_ste_from_preparatory.py</code> / <code>test_calibration.py</code> / <code>test_pipeline_regression.py</code></td><td>Identity, woodwind calibration, family-dispatch integration tests.</td></tr>
+  <tr><td><code>STE_Lab_User_and_Technical_Manual.html</code></td><td>This document. Must sit next to the launchers. Opened as a local file, not as a web search.</td></tr>
+  <tr><td><code>run_ste_effects_batch*.py</code></td><td>Legacy tree-walking batches (violin / viola / cello / bass).</td></tr>
+  <tr><td><code>ste_lab\</code></td><td>Source package, including <code>prep_gui.py</code>. Do not point PYTHONPATH at this folder if the E: GitHub STE repo is the canonical product.</td></tr>
+</table>
+
+<h2 id="glossary">8. Glossary</h2>
+<table>
+  <tr><th>Word</th><th>Plain</th><th>Scientific</th></tr>
+  <tr><td>CDM / F-061 / “spectral mass”</td><td>A project number for how the spectrum is packed on a sustain — not “brightness.”</td><td>F-061 Combined Density Metric. Do not equate it with brilliance, richness, or harmonic count.</td></tr>
+  <tr><td>Arco normal / ordinario</td><td>Ordinary bowing, no mute, no special contact point.</td><td>Baseline technique; L ≡ 0 in the comparative layer.</td></tr>
+  <tr><td>L</td><td>How much the effect changed F-061, on a log scale.</td><td>ln(technique / ordinario).</td></tr>
+  <tr><td>Anchor</td><td>A note we have in both lists, used to learn the change.</td><td>Pair (S(m), T(m)) ∈ overlap.</td></tr>
+  <tr><td>Media</td><td>A completed-grid convenience — not a second experiment. Meaning depends on family.</td><td>Strings: arithmetic mean of IOWA/ORCH peers. Woodwind ordinario: measured target wins (<code>empirical_only</code>).</td></tr>
+  <tr><td>Family pipeline</td><td>Strings write one book per effect; woodwinds write ordinario calibration.</td><td><code>pipeline_for_instrument</code> → <code>strings</code> | <code>woodwinds</code>.</td></tr>
+  <tr><td>Generated media</td><td>The woodwind spine written beside the deposit, never on top of the source book.</td><td><code>{root}/generated/{Display}_generated_media.xlsx</code>.</td></tr>
+  <tr><td>Empirical_ORCH</td><td>The recorded Orchidea notes only — every recorded dynamic, not only mf. Use this when you claim a measured result.</td><td>Principal evidence layer; Estimate = measured. No L, no hole-fill.</td></tr>
+  <tr><td>Orchidea recorded layer</td><td>If Orchidea recorded that effect at that loudness, those cells are the answer.</td><td><code>orchidea_recorded_layer</code>: copy <code>ORCH_{slug}_{d}</code> as measured. L is only for IOWA or an unrecorded dynamic.</td></tr>
+  <tr><td>Evidence_Map</td><td>A contents list: who is a recording, who is a model, who is only context.</td><td><code>principal_evidence</code> = recorded Orchidea only. Iowa same-dynamic <i>L</i> → modelled_completion. Phil/McGill → context.</td></tr>
+  <tr><td>Measured ceiling</td><td>Highest note we trust as a real anchor (E7).</td><td>MIDI 100; above → register_extrapolated.</td></tr>
+  <tr><td>Hold-edge</td><td>Past the last known pair, keep the last change; do not dive to zero.</td><td>Constant extrapolation of L outside conv(M).</td></tr>
+  <tr><td>Collection</td><td>Which recording library (Iowa, Orchidea, …).</td><td>Corpus label; never silently pooled with Phil/McGill.</td></tr>
+  <tr><td>Preparatory Excel</td><td>One workbook that already holds arco, effects and Tab-3 pairs.</td><td>Sheets Paste_arco, Paste_effects_mf, Anchors_all drive <code>run_ste_from_preparatory</code>.</td></tr>
+  <tr><td>By-string IOWA</td><td>Iowa numbers stored per string (C/G/D/A…) in the Zenodo book, not in a folder tree.</td><td>Sheets <code>*IOWA_pp/mf/ff</code>; <code>CDM - Media</code> is the note-level mean.</td></tr>
+</table>
+
+<h2 id="trouble">9. Troubleshooting</h2>
+<table>
+  <tr><th>What you see</th><th>Likely cause</th><th>What to do</th></tr>
+  <tr><td>Paste lands on the wrong notes</td><td>Value-only list without a start note, or <code>72</code> read as a value.</td><td>Set start note, or write <code>midi72</code>.</td></tr>
+  <tr><td>High notes near 0</td><td>Old file from before hold-edge L.</td><td>Re-run the preparatory runner or the instrument batch.</td></tr>
+  <tr><td>G3 harmonics ~800</td><td>L from the first harmonic applied below that pitch.</td><td>Blank below the instrument floor (violin 79, viola 72, cello 60, bass 52).</td></tr>
+  <tr><td>Help → Open full manual opens an Edge <em>search</em> page</td><td>Older code sent a <code>file://</code> URI. This folder name has spaces and accents (<code>Código extrapolação</code>); Edge searched that string instead of opening the file.</td><td>Use the current Lab. Close and reopen the window, then press the button again. The HTML is opened with <code>os.startfile</code> on the real path. If you still see a search page, open the HTML from Explorer once and keep it next to the launchers.</td></tr>
+  <tr><td>Help button says the manual is missing</td><td>The HTML is not next to the launchers.</td><td>Keep <code>STE_Lab_User_and_Technical_Manual.html</code> in <code>Extrapol_data</code>.</td></tr>
+  <tr><td>Rebuild still used viola trees</td><td>Look in folder was still <code>D:\CORDAS_3\VIOLA 4</code>.</td><td>Tick Rebuild, set Instrument, and set Look in folder to that instrument’s deposit (Cello suggests <code>D:\CORDAS_3\CELLO</code>). Close and reopen the window if you still see the old checkbox text.</td></tr>
+  <tr><td><code>Cello_STE_*.xlsx</code> with viola-like MIDI / many QA flags</td><td>Instrument was set to Cello while Preparatory Excel was still the viola pack (Rebuild off).</td><td>Those files are viola numbers with cello names. Do not deposit them. Point --prep at a real cello preparatory workbook.</td></tr>
+  <tr><td>Excel Media shows blanks</td><td>Formulas not calculated.</td><td>Open the file in Excel once (or LibreOffice) and save.</td></tr>
+  <tr><td>Import skips a sheet</td><td>Sheet name contains “media” or is a metadata sheet.</td><td>Expected. Collection sheets still load.</td></tr>
+  <tr><td>WARNING: no _Sustains_Stable / no compiled book</td><td>A listed Orchidea / Phil / McGill folder is empty or only has raw <code>_Sustains</code>.</td><td>Put the compiled research xlsx under <code>_Sustains_Stable</code>. Rebuild continues.</td></tr>
+  <tr><td>WARNING: missing IOWA Zenodo…</td><td>The string-instrument collections workbook is missing or has no IOWA sheets.</td><td>IOWA is not in the compiled trees. Restore e.g. <code>VIOLA_Zenodo_collections_Arco_normal.xlsx</code>.</td></tr>
+  <tr><td>Orchidea sordino ff missing from Empirical_ORCH / log has no <code>(no L)</code></td><td>Preparatory pack is older than the recorded-layer rule (mf-only <code>ORCH_sordino_mf</code>).</td><td>Tick Rebuild + Run so <code>ORCH_sordino_pp/mf/ff</code> enter as measured. Look for <code>ORCH ff recorded n=… (no L)</code>.</td></tr>
+  <tr><td>Evidence_Map says Iowa sordino pp/ff inherited mf, or McGill/Phil are principal</td><td>Book written before the stamp fix (v1.2.4).</td><td>CDM values can stay. Re-run (Rebuild optional) so Evidence_Map shows modelled_completion for same-dynamic Iowa and context for Phil/McGill.</td></tr>
+  <tr><td>A sul tasto book appeared</td><td>Someone typed tasto in the big Lab, or used the violin batch.</td><td>Viola preparatory run must not write tasto. Delete the book; do not invent pairs.</td></tr>
+  <tr><td>String run wrote only ordinario</td><td>Older generic path continued when <code>Anchors_all</code> was empty, or Look in folder missed the Orchidea effect trees.</td><td>Use v1.3.2. Tick Rebuild. If effect trees exist and anchors are empty, the run must stop with <code>DataDiscoveryError</code>. Check <code>ORCH_*</code> / <code>ORCH_VLA</code> subfolders (<code>harmonics</code>, <code>sul-ponticello</code>, <code>con-sord</code>).</td></tr>
+  <tr><td>Iowa notes missing from bass-clarinet <code>Measured_Data</code></td><td>Pre-1.3.2 longest-file-wins, or generated media overwrote the source book.</td><td>Rebuild with v1.3.2. Confirm <code>n_dropped=0</code> in the log. Hash the source <code>*Zenodo_collections*media.xlsx</code> before and after — it must not change. Generated spine is under <code>generated/</code>.</td></tr>
+  <tr><td><code>Refusing to overwrite source workbook</code></td><td>An output path resolved to an input used in this run.</td><td>Expected safeguard. Write generated files under <code>generated/</code> or the results folder, not over the source book.</td></tr>
+  <tr><td>Woodwind sheets on a viola book</td><td>Instrument was bass clarinet while the prep was a viola pack, or an old generic runner was used.</td><td>Instrument must match the deposit. String effect books must not contain <code>Final_Calibration</code> / woodwind <code>Methodology</code>.</td></tr>
+  <tr><td>Small window used the wrong Excel</td><td>Rebuild hunts Look in folder; without Rebuild, data come from Preparatory Excel.</td><td>Match Instrument, Look in folder, Preparatory Excel and Save folder to the same deposit. Do not save viola output into <code>D:\CORDAS_3\CELLO</code>.</td></tr>
+</table>
+
+<h3>9.1 Keyboard and Help</h3>
+<ul>
+  <li><kbd>F1</kbd> or header <b>Help</b> — opens the short in-app text window (does not start Edge by itself).</li>
+  <li>In-app Help → <b>Open full manual</b> (full Lab) or <b>Open full Lab manual</b> (small window) — opens this HTML with the default Windows handler for <code>.html</code> (<code>os.startfile</code> on <code>…\Extrapol_data\STE_Lab_User_and_Technical_Manual.html</code>).</li>
+  <li>Do not hand the browser a <code>file://</code> URI of this path. Accents in <code>Código extrapolação</code> make Edge show a blank search page instead of the manual.</li>
+</ul>
+
+<footer>
+  STE Lab v1.3.2 · User manual + technical manual · Desktop working copy
+  <code>C:\Users\lmr20\Desktop\Código extrapolação\Extrapol_data</code>.
+  Rebuild examples: <code>D:\CORDAS_3\VIOLA 4</code>, <code>D:\CORDAS_3\CELLO</code>, <code>D:\MADEIRAS_2\BASS_CLARINET</code>.
+  Analysis companion: <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>.
+</footer>
+</main>
+</body>
+</html>
