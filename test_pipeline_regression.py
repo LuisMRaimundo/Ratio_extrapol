@@ -584,5 +584,42 @@ class TestEnglishHornFamilyRatio(unittest.TestCase):
             wb.close()
 
 
+class TestRelationsInventory(unittest.TestCase):
+    def test_preparatory_writes_relations_inventory(self):
+        from ste_lab.relations import INVENTORY_COLUMNS
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _string_deposit(
+                root,
+                orch_folder="ORCH_VLA",
+                media_name="VIOLA_Zenodo_collections_Arco_normal.xlsx",
+                media_sheet="VIOLA_Media",
+            )
+            prep = root / "Viola_STE_preparatory.xlsx"
+            build(root, "viola", prep)
+            wb = load_workbook(prep, data_only=True)
+            self.assertIn("Relations_inventory", wb.sheetnames)
+            ws = wb["Relations_inventory"]
+            headers = []
+            header_row = 1
+            for i, row in enumerate(ws.iter_rows(min_row=1, max_row=6, values_only=True), start=1):
+                vals = [str(v).strip() for v in row if v is not None]
+                if "kind" in vals and "used_in_production" in vals:
+                    headers = [str(v) if v is not None else "" for v in row]
+                    header_row = i
+                    break
+            for col in ("kind", "instrument", "dynamic", "collection", "n_anchors", "grade", "used_in_production"):
+                self.assertIn(col, headers)
+            self.assertEqual(INVENTORY_COLUMNS[0], "kind")
+            used = [
+                dict(zip(headers, row))
+                for row in ws.iter_rows(min_row=header_row + 1, values_only=True)
+                if row and row[0]
+            ]
+            self.assertTrue(any(str(r.get("used_in_production")) == "yes" for r in used))
+            wb.close()
+
+
 if __name__ == "__main__":
     unittest.main()

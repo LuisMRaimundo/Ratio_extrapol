@@ -648,5 +648,179 @@ class TestRebuildFolderHunt(unittest.TestCase):
             self.assertFalse(any("Orchidea" in path.name or "Clarinete" in path.name for path, _, _ in trees))
 
 
+class TestTransferRelations(unittest.TestCase):
+    def test_discover_includes_synthetic_collection(self):
+        from ste_lab.relations import catalog_for_discovery, discover_relations, select_production_relation
+
+        measured = {
+            ("ORCH", "ordinario", "mf"): {"curve": {60: 10.0, 62: 11.0, 64: 12.0}},
+            ("ORCH", "sul ponticello", "mf"): {"curve": {60: 12.0, 62: 13.2, 64: 14.4}},
+            ("MCGILL", "ordinario", "mf"): {"curve": {60: 9.0, 62: 10.0, 64: 11.0}},
+            ("MCGILL", "sul ponticello", "mf"): {"curve": {60: 10.8, 62: 12.0, 64: 13.2}},
+            ("SYNTH_X", "ordinario", "mf"): {"curve": {60: 8.0, 62: 8.0, 64: 8.0}},
+            ("SYNTH_X", "sul ponticello", "mf"): {"curve": {60: 16.0, 62: 16.0, 64: 16.0}},
+        }
+        catalog = catalog_for_discovery(instrument="viola", harm_floor=72)
+        rels = discover_relations(measured, catalog)
+        colls = {r.collection for r in rels if r.kind == "technique"}
+        self.assertIn("ORCH", colls)
+        self.assertIn("MCGILL", colls)
+        self.assertIn("SYNTH_X", colls)
+        self.assertFalse(any("tasto" in (r.target_cond or "") for r in rels))
+        selected = select_production_relation(rels, {"instrument": "viola"})
+        self.assertTrue(any(r.used_in_production and r.collection == "ORCH" for r in selected))
+        self.assertFalse(any(r.used_in_production and r.collection == "SYNTH_X" for r in selected))
+
+    def test_validation_sheets_and_pi95_only_on_overlap(self):
+        from ste_lab.relation_export import apply_pi95_for_technique, attach_project_validation
+        from ste_lab.relations import Relation
+        from ste_lab.session import Cell, Project
+        from ste_lab.validation import PAIRWISE_COLUMNS, SPREAD_COLUMNS, compare_relations
+        from ste_lab.transfer import Anchor
+        from run_ste_effects_batch import build_layer
+
+        a = Relation(
+            kind="technique",
+            instrument="viola",
+            source_cond="ordinario",
+            target_cond="sul ponticello",
+            collection="ORCH",
+            dynamic="mf",
+            anchors=[Anchor(60, 10.0, 12.0), Anchor(62, 10.0, 13.0), Anchor(64, 10.0, 14.0)],
+            used_in_production=True,
+        )
+        b = Relation(
+            kind="technique",
+            instrument="viola",
+            source_cond="ordinario",
+            target_cond="sul ponticello",
+            collection="MCGILL",
+            dynamic="mf",
+            anchors=[Anchor(60, 9.0, 10.8), Anchor(62, 10.0, 12.0)],
+        )
+        pairwise, spread = compare_relations([a, b])
+        self.assertEqual(list(pairwise.columns), PAIRWISE_COLUMNS)
+        self.assertEqual(list(spread.columns), SPREAD_COLUMNS)
+        self.assertGreaterEqual(int(pairwise.iloc[0]["n_overlap"]), 2)
+        self.assertIn(60, set(spread["midi"]))
+        self.assertNotIn(64, set(spread["midi"]))
+
+        project = Project(title="pi95")
+        modelled = build_layer("viola", "IOWA", "sul ponticello", "mf", {60: 20.0, 64: 22.0}, "modelled_IOWA_anchored")
+        measured = build_layer("viola", "ORCH", "sul ponticello", "mf", {60: 12.0, 64: 14.0}, "measured")
+        project.add_layer(modelled)
+        project.add_layer(measured)
+        attach_project_validation(project, pairwise=pairwise, spread=spread)
+        apply_pi95_for_technique(
+            project,
+            instrument="viola",
+            technique="sul ponticello",
+            spread=spread,
+            pairwise=pairwise,
+        )
+        self.assertEqual(modelled.cells[60].uncertainty, "empirical_spread")
+        self.assertIsNotNone(modelled.cells[60].pi95_low)
+        self.assertIsNone(modelled.cells[64].pi95_low)
+        self.assertIsNone(measured.cells[60].pi95_low)
+        self.assertEqual((measured.cells[60].origin or "").lower(), "measured")
+
+    def test_pooled_technique_and_instrument_weighted_mean(self):
+        from ste_lab.relations import Relation, field_for_transfer
+        from ste_lab.transfer import Anchor
+
+        orch = Relation(
+            kind="technique",
+            instrument="viola",
+            source_cond="ordinario",
+            target_cond="sul ponticello",
+            collection="ORCH",
+            dynamic="mf",
+            anchors=[Anchor(60, 10.0, 10.0 * math.exp(0.10)), Anchor(62, 10.0, 10.0 * math.exp(0.10)), Anchor(64, 10.0, 10.0 * math.exp(0.10))],
+            used_in_production=True,
+        )
+        mcgill = Relation(
+            kind="technique",
+            instrument="viola",
+            source_cond="ordinario",
+            target_cond="sul ponticello",
+            collection="MCGILL",
+            dynamic="mf",
+            anchors=[Anchor(60, 10.0, 10.0 * math.exp(0.30)), Anchor(62, 10.0, 10.0 * math.exp(0.30))],
+        )
+        L, contrib, msgs = field_for_transfer(
+            [orch, mcgill],
+            [60, 62, 70],
+            production=orch,
+            mode="pooled",
+            weight="anchors",
+            min_collections=2,
+        )
+        self.assertAlmostEqual(L[60], (0.10 * 3 + 0.30 * 2) / 5)
+        self.assertAlmostEqual(L[62], (0.10 * 3 + 0.30 * 2) / 5)
+        self.assertAlmostEqual(L[70], 0.10)
+        self.assertTrue(any("fell back to single" in m for m in msgs))
+
+        iowa = Relation(
+            kind="instrument",
+            instrument="english_horn",
+            source_cond="oboe",
+            target_cond="english_horn",
+            collection="IOWA",
+            dynamic="mf",
+            anchors=[Anchor(60, 8.0, 8.0 * math.exp(0.20)), Anchor(62, 8.0, 8.0 * math.exp(0.20)), Anchor(64, 8.0, 8.0 * math.exp(0.20))],
+            used_in_production=True,
+        )
+        phil = Relation(
+            kind="instrument",
+            instrument="english_horn",
+            source_cond="oboe",
+            target_cond="english_horn",
+            collection="PHIL",
+            dynamic="mf",
+            anchors=[Anchor(60, 8.0, 8.0 * math.exp(0.40)), Anchor(62, 8.0, 8.0 * math.exp(0.40))],
+        )
+        Li, _, _ = field_for_transfer(
+            [iowa, phil],
+            [60, 70],
+            production=iowa,
+            mode="pooled",
+            weight="anchors",
+            min_collections=2,
+        )
+        self.assertAlmostEqual(Li[60], (0.20 * 3 + 0.40 * 2) / 5)
+        self.assertAlmostEqual(Li[70], 0.20)
+
+    def test_measured_cell_never_overwritten_any_mode(self):
+        from ste_lab.transfer import Anchor, technique_transfer
+
+        source = build_layer("viola", "ORCH", "ordinario", "mf", {60: 10.0, 62: 11.0}, "measured")
+        anchors = [Anchor(60, 10.0, 99.0), Anchor(62, 11.0, 88.0), Anchor(64, 12.0, 77.0)]
+        copied = technique_transfer(source, anchors, "sul ponticello", copy_anchors=True)
+        self.assertEqual(copied.layer.cells[60].origin, "measured")
+        self.assertAlmostEqual(copied.layer.cells[60].value, 99.0)
+        field = {60: 0.5, 62: 0.5}
+        pooled = technique_transfer(
+            source, anchors, "sul ponticello", copy_anchors=True, log_ratio_field=field
+        )
+        self.assertEqual(pooled.layer.cells[60].origin, "measured")
+        self.assertAlmostEqual(pooled.layer.cells[60].value, 99.0)
+
+    def test_default_run_writes_validation_sheets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prep = Path(tmp) / "prep.xlsx"
+            out = Path(tmp) / "out"
+            _write_prep(prep)
+            run(prep, out, instrument="viola")
+            ste = out / "Viola_STE_sul_ponticello_IOWA_ORCH.xlsx"
+            with pd.ExcelFile(ste) as xl:
+                self.assertIn("L_Validation", xl.sheet_names)
+                self.assertIn("L_Spread", xl.sheet_names)
+                self.assertIn("Summary_Validation", xl.sheet_names)
+            csv = out / "viola_L_validation.csv"
+            self.assertTrue(csv.exists())
+            pont = _layer_table(ste, "viola_ORCH_mf")
+            self.assertEqual(_origin_at(pont, 67).lower(), "measured")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

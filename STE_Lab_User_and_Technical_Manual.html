@@ -68,7 +68,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <p>
     Current project name: <b>Ratio_extrapol</b>. The GUI and package still say “STE Lab” / <code>ste_lab</code> (legacy identifiers).
     One document, two voices: a plain-language user’s guide, then the scientific specification.
-    Package version 1.3.3 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
+    Package version 1.4.0 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
     Two family workflows: bowed strings keep separate effect books; woodwinds use ordinario family-transfer calibration.
     Source workbooks are never overwritten. Genuine compiled Iowa files are merged (longest-file-wins is prohibited).
     Production Media, AcousticTable, and Final_Calibration share one family-specific resolver.
@@ -85,6 +85,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <a href="#recipes">Recipes</a>
   <a href="#formulas">Formulas</a>
   <a href="#woodwind">Woodwind calibration</a>
+  <a href="#relations">Transfer relations</a>
   <a href="#tech">Technical manual</a>
   <a href="#files">File map</a>
   <a href="#glossary">Glossary</a>
@@ -365,7 +366,8 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <li>No <i>L</i> on an Orchidea layer that was recorded (any instrument × effect × dynamic).</li>
   <li>No second <i>L</i> from IOWA (IOWA has no effect recordings).</li>
   <li>No pooling of Philharmonia or McGill into Media.</li>
-  <li>No cubic extrapolation of <i>L</i> beyond the last anchor.</li>
+  <li>No cubic extrapolation of <i>L</i> beyond the last anchor. Pooled <i>L</i> (optional, §5.12) still interpolates/holds/clips with the same operator.</li>
+  <li>No replacement of a measured target cell by a transfer, a pooled field, or a validation interval.</li>
   <li>String rebuild does not read Iowa <code>_Sustains_Stable</code> trees (Iowa remains on the Zenodo book). Woodwind rebuild <em>does</em> read target Iowa compiled trees and merges them.</li>
   <li>No overwrite of a source workbook. No silent drop of a genuine compiled Iowa note merely because another file is longer or a note sits above catalog <code>sounding_high</code>.</li>
   <li>No <code>orchidea_family_transfer_estimate</code> / <code>two_log_ratio</code> on ordinary string technique books.</li>
@@ -378,10 +380,37 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <p class="eq"><i>L</i><sub>coll</sub><i>(m) = ln</i>(ORCH<sub>cl</sub><i>(m)</i> / IOWA<sub>cl</sub><i>(m)</i>)</p>
 <p class="eq"><i>L</i><sub>instr</sub><i>(m) = ln</i>(IOWA<sub>target</sub><i>(m)</i> / IOWA<sub>cl</sub><i>(m)</i>)</p>
 <p class="eq">ORCH<sub>target</sub><i>(m) =</i> ORCH<sub>cl</sub><i>(m) × exp</i>( clip(<i>L</i><sub>instr</sub><i>(m)</i>, −3, 3) )</p>
-<p><i>L</i><sub>coll</sub> and <i>L</i><sub>instr</sub> use the same hold-edge interpolator as technique transfer (§5.4). Iowa used to form <i>L</i><sub>instr</sub> is excluded from transfer validation. If there is no same-collection sibling overlap, <i>L</i><sub>instr</sub> is <code>UNDETERMINED</code> and no transfer cells are written.</p>
+<p><i>L</i><sub>coll</sub> and <i>L</i><sub>instr</sub> are the collection-kind and instrument-kind transfer relations of §5.10. They use the same hold-edge interpolator as technique transfer (§5.4). Iowa used to form <i>L</i><sub>instr</sub> is excluded from transfer validation. If there is no same-collection sibling overlap, <i>L</i><sub>instr</sub> is <code>UNDETERMINED</code> and no transfer cells are written. Default <code>transfer_field.mode = single</code> keeps today’s Iowa <i>L</i><sub>instr</sub> numbers bit-for-bit; <code>pooled</code> is optional (§5.12).</p>
 <p><i>L</i><sub>coll</sub> is a stored diagnostic. Production does not multiply by <i>exp(L<sub>coll</sub>)</i>. The predictor already starts from the ORCH sibling donor; at matched unclipped anchors, applying <i>L</i><sub>instr</sub> there is equivalent to applying the collection ratio to the Iowa target. That identity is not claimed for every interpolated or clipped MIDI.</p>
 <p><code>empirical_only</code>: a finite measured target value is the final value (weight 1 / 0). Transfer is used only when that cell is missing. <code>equal_weight</code> and <code>legacy_equal_weight</code> do mix both inputs; those blended outputs are <code>COMBINED_ESTIMATE</code>. <code>fixed_weight</code> and <code>validation_optimised</code> are rejected. Authoritative weights: <i>w<sub>T</sub> = 1 − w<sub>E</sub></i>.</p>
 <p>QA on <code>Final_Calibration</code>: HIGH / MODERATE are production-eligible; REVIEW_REQUIRED is visible but <code>Accepted_Final=FALSE</code> unless <code>allow_review_required</code> is true (default false); distance &gt; 6 semitones is REJECTED. The notation catalog range (bass clarinet sounding 34–77) is not permission to delete a genuine measurement. The export grid is the catalog specification union the measured extrema.</p>
+
+<h3 id="relations">5.10 Transfer relations</h3>
+<p class="src">ste_lab/relations.py · Relation · discover_relations · select_production_relation</p>
+<p>A <b>transfer relation</b> is a pair (source condition, target condition) measured inside one collection at shared sounding MIDI:</p>
+<p class="eq"><i>L(m) = ln</i>(target(<i>m</i>) / source(<i>m</i>))</p>
+<p>Three kinds are discovered today; any later kind (register, dynamic) uses the same record.</p>
+<table>
+  <tr><th>kind</th><th>source → target</th><th>Where</th></tr>
+  <tr><td><code>technique</code></td><td>ordinario → effect</td><td>One collection (strings)</td></tr>
+  <tr><td><code>instrument</code></td><td>sibling → target</td><td>One collection (woodwind <i>L</i><sub>instr</sub>)</td></tr>
+  <tr><td><code>collection</code></td><td>IOWA → ORCH (and other pairs in name order)</td><td>One instrument / technique (woodwind <i>L</i><sub>coll</sub>)</td></tr>
+</table>
+<p><code>discover_relations</code> walks every collection id present in the trees — the list is not hard-coded. Sul tasto is skipped. Harmonics honour the instrument floor. Relations with fewer than three same-dynamic pairs are kept on <code>Relations_inventory</code>; production still inherits mf <i>L</i> when <i>n</i> &lt; 3. <code>select_production_relation</code> is the policy that reproduces today’s teacher: ORCH first; McGill con sordino only when ORCH has none; woodwind Iowa <i>L</i><sub>instr</sub> (else Philharmonia, then McGill); <i>L</i><sub>coll</sub> is the IOWA→ORCH sibling pair and is stored, not multiplied.</p>
+
+<h3>5.11 Validation of the transfer assumption</h3>
+<p class="src">ste_lab/validation.py · compare_relations</p>
+<p>Always on, never a substitute for a measurement. For every (kind, instrument, source, target, dynamic) taught by two or more collections, each collection pair is compared on the MIDI intersection of their anchors (T&gt;0 and S&gt;0 only):</p>
+<p class="eq">bias = mean(<i>L</i><sub>A</sub> − <i>L</i><sub>B</sub>), &nbsp; MAE, &nbsp; SD, &nbsp; Pearson <i>r</i>, &nbsp; bias% = 100 · (<i>e</i><sup>bias</sup> − 1)</p>
+<p>Per overlapping MIDI, min / max / range of <i>L</i> across collections. Sheets <code>L_Validation</code>, <code>L_Spread</code>, and <code>Summary_Validation</code> are written on every STE and Zenodo book; <code>{instrument}_L_validation.csv</code> sits in the output folder. Evidence_Map rows with <code>evidence_role = validation</code> mark non-production collections that contributed.</p>
+<p>On a <em>modelled</em> cell only, and only where ≥ 2 collections overlap at that MIDI:</p>
+<p class="eq">PI95 = value · exp( ± 1.96 · SD )</p>
+<p>SD is the per-note SD of <i>L</i> when three or more collections overlap, or the relation-level SD of <i>L</i> differences when the note has a single pair. Those cells take <code>uncertainty = empirical_spread</code>. Every other cell is left untouched.</p>
+
+<h3>5.12 Pooled log-ratio field (optional)</h3>
+<p class="src">calibration.yaml · transfer_field &nbsp;|&nbsp; ste_lab/relations.py · field_for_transfer</p>
+<p>Default <code>mode: single</code> is today’s field: the production relation interpolated by §5.4, clipped to [−3, 3]. <code>mode: pooled</code> replaces that field, at each MIDI, by the mean of the per-collection <i>L</i> values present there, weighted by that collection’s anchor count (<code>weight: anchors</code>) or equally (<code>weight: equal</code>). The pooled anchors are then interpolated, held, and clipped exactly as today. Applies to technique, instrument, and collection relations (woodwinds pool <i>L</i><sub>instr</sub> and <i>L</i><sub>coll</sub> separately). Where fewer than <code>min_collections</code> (default 2) overlap, the code falls back to <code>single</code> and logs it.</p>
+<p>Invariants that do not change under <code>pooled</code>: a recorded target layer is copied as <code>measured</code> and never has <i>L</i> applied; woodwind <code>empirical_only</code> still keeps a measured target cell; string Media remains mean(IOWA, ORCH); Philharmonia / McGill absolute values never enter Media or a measured slot. Pooled modelled cells are tagged <code>modelled_&lt;COLL&gt;_pooled</code>; the cell comment, Session_Log (per MIDI), and WorkbookMeta / Provenance list the contributing collections and weights.</p>
 
 <!-- ===================== TECHNICAL MANUAL ===================== -->
 <h2 id="tech">6. Technical manual (implementation notes)</h2>
@@ -582,7 +611,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 </ul>
 
 <footer>
-  Ratio_extrapol · package <code>ste_lab</code> v1.3.3 · User manual + technical manual ·
+  Ratio_extrapol · package <code>ste_lab</code> v1.4.0 · User manual + technical manual ·
   <code>C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol</code>.
   Rebuild examples: <code>D:\CORDAS_3\VIOLA 4</code>, <code>D:\CORDAS_3\CELLO</code>, <code>D:\MADEIRAS_2\BASS_CLARINET</code>.
   Analysis companion: <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>.

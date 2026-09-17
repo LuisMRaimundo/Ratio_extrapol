@@ -2,7 +2,7 @@
 
 Local folder: `Ratio_Extrapol`. GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol).
 
-Python package `ste_lab` (v1.3.3) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
+Python package `ste_lab` (v1.4.0) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
 
 This repository estimates Combined Density Metric (F-061 / `spectral_mass`) curves across technique, collection, and missing notes. It does **not** compute F-061 from audio. Engineering consistency of exports is not a claim of acoustic validity.
 
@@ -32,6 +32,10 @@ The same resolver writes in-memory Media, Zenodo Media, AcousticTable, and Final
 - Polynomial: origin `extrapolated_polynomial`.
 
 Technique transfer still holds edge \(L\). That operator was not changed to match Fill.
+
+## Transfer relations (v1.4.0)
+
+Technique, instrument, and collection log-ratios share one `Relation` record (`ste_lab/relations.py`). Default `transfer_field.mode: single` is unchanged production \(L\). Validation sheets (`L_Validation`, `L_Spread`, `Summary_Validation`) are always written and do not replace a measurement. `mode: pooled` is optional.
 
 ## \(L_{\mathrm{coll}}\)
 

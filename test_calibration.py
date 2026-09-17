@@ -235,6 +235,9 @@ class TestMissingAndDeterminism(unittest.TestCase):
         self.assertEqual(cfg.combination_method, "empirical_only")
         self.assertEqual(cfg.transfer_method, "two_log_ratio")
         self.assertFalse(cfg.allow_review_required)
+        self.assertEqual(cfg.transfer_field_mode, "single")
+        self.assertEqual(cfg.transfer_field_weight, "anchors")
+        self.assertEqual(cfg.transfer_field_min_collections, 2)
 
 
 class TestGridAndAcousticLiterals(unittest.TestCase):
