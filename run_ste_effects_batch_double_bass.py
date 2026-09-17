@@ -28,7 +28,7 @@ from ste_lab.excel_export import export_workbook
 from ste_lab.notes import parse_pitch
 from ste_lab.qa import audit_project
 from ste_lab.session import Project
-from ste_lab.transfer import media_of
+from ste_lab.media_policy import production_media_of
 from ste_lab.zenodo_export import export_zenodo_workbook
 
 ARCO = WORKSPACE / "DOUBLE_BASS" / "DOUBLEBASS_Zenodo_collections_media.xlsx"
@@ -291,7 +291,12 @@ def main() -> None:
                 and lg.cells
             ]
             if len(peers) >= 1:
-                media = media_of(peers, name=f"double_bass_Media_{effect}_{dyn}")
+                media = production_media_of(
+                    peers,
+                    name=f"double_bass_Media_{effect}_{dyn}",
+                    instrument="double_bass",
+                    technique=effect,
+                )
                 project.add_layer(media)
                 media_layers.append(media)
 

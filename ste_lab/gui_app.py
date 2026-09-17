@@ -20,11 +20,12 @@ from .catalog import (
     resolve_instrument,
 )
 from .excel_export import export_workbook, import_workbook
+from .media_policy import production_average_for_layer
 from .notes import chromatic_range, midi_to_label, parse_pitch
 from .paste import parse_block
 from .qa import audit_project, audit_transfer
 from .session import Project, layer_from_identity
-from .transfer import family_transfer, fill_missing, media_of, parse_anchor_block, technique_transfer
+from .transfer import InsufficientFillData, family_transfer, fill_missing, parse_anchor_block, technique_transfer
 
 
 APP_TITLE = "STE Lab — Spectral Technique Extrapolation"
@@ -263,7 +264,11 @@ class STEApp(tk.Tk):
         ttk.Entry(fill, textvariable=self.var_extrap, width=6).grid(row=0, column=3)
         ttk.Label(fill, text="Polynomial degree").grid(row=1, column=0, sticky="w", padx=4)
         ttk.Entry(fill, textvariable=self.var_degree, width=6).grid(row=1, column=1, sticky="w")
-        ttk.Button(fill, text="Fill selected layer", command=self._run_fill).grid(row=1, column=2, columnspan=2, pady=4)
+        ttk.Label(
+            fill,
+            text="PCHIP needs ≥3 known notes. Linear is valid for two notes. Exterior tags are extrapolated_pchip / extrapolated_hold, not ridge.",
+        ).grid(row=2, column=0, columnspan=4, sticky="w", padx=4)
+        ttk.Button(fill, text="Fill selected layer", command=self._run_fill).grid(row=3, column=2, columnspan=2, pady=4)
 
         tech = ttk.LabelFrame(
             parent,
@@ -299,9 +304,11 @@ class STEApp(tk.Tk):
             text="Completed-grid Media (not independent replication of L — Empirical_ORCH is principal evidence)",
         )
         med.pack(fill="x", padx=8, pady=8)
-        ttk.Button(med, text="Average all layers that share technique + dynamic", command=self._run_media).pack(
-            padx=6, pady=6
-        )
+        ttk.Button(
+            med,
+            text="Production Media of IOWA/ORCH peers (string mean; woodwind combination policy)",
+            command=self._run_media,
+        ).pack(padx=6, pady=6)
 
     def _build_export(self, parent: ttk.Frame) -> None:
         box = ttk.LabelFrame(parent, text="Workbook (same organisation as the viola harmonics Excel)")
@@ -569,7 +576,14 @@ class STEApp(tk.Tk):
         if any(f.severity == "critical" for f in pre):
             if not messagebox.askyesno("Blocked approach", self._flag_text(pre) + "\n\nRun anyway?"):
                 return
-        result = fill_missing(layer, self.cmb_fill.get(), cap, degree)
+        try:
+            result = fill_missing(layer, self.cmb_fill.get(), cap, degree)
+        except InsufficientFillData as exc:
+            messagebox.showerror(
+                "Fill",
+                f"{exc}\nThe selected layer was left unchanged. Choose linear for two notes, or add another measured value.",
+            )
+            return
         self.project.log.extend(result.messages)
         self._refresh_all()
         messagebox.showinfo("Fill", "\n".join(result.messages))
@@ -630,18 +644,14 @@ class STEApp(tk.Tk):
         layer = self._require_layer()
         if not layer:
             return
-        peers = [
-            lg
-            for lg in self.project.layers
-            if lg.technique == layer.technique and lg.dynamic == layer.dynamic and lg.instrument == layer.instrument
-        ]
-        if len(peers) < 2:
-            messagebox.showinfo("Media", "Need at least two layers with the same instrument, technique and dynamic.")
+        try:
+            media = production_average_for_layer(self.project.layers, layer)
+        except ValueError as exc:
+            messagebox.showinfo("Media", str(exc))
             return
-        media = media_of(peers)
         self.project.add_layer(media)
         self.current_layer_id = media.layer_id
-        self.project.log.append(f"Media from {len(peers)} layers → {media.display_name()}")
+        self.project.log.append(f"Production Media → {media.display_name()}")
         self._refresh_all()
 
     def _export_xlsx(self) -> None:
@@ -841,10 +851,12 @@ The formula is target = source × exp(L), with L learned on the overlap
 and held at the last pair beyond that overlap (no dive to zero).
 
 The one rule
-Never relabel a filled or transferred cell as measured.
+Never relabel a filled, transferred, or blended cell as measured.
 Empirical_ORCH (measured Orchidea cells) is the principal effect evidence.
-Media is a completed-grid average. IOWA and ORCH share L — that is not
-replication. Sul tasto and inherited pp/ff stay off Empirical_ORCH.
+Production Media is family-specific: strings average IOWA/ORCH; woodwind
+ordinario follows calibration.yaml (default empirical_only). Shared L is
+not replication. Sul tasto and inherited pp/ff stay off Empirical_ORCH.
+PCHIP fill needs three known notes; two-point PCHIP is rejected.
 Violin notes above E7 (MIDI 100) stay flagged and out of summaries.
 Harmonics: do not publish modelled values below G5.
 

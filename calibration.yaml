@@ -7,7 +7,10 @@ transfer:
   method: two_log_ratio
 
 combination:
-  # empirical_only | equal_weight | fixed_weight | validation_optimised | legacy_equal_weight
+  # Supported: empirical_only | equal_weight | legacy_equal_weight
+  # Rejected until specified: fixed_weight | validation_optimised
+  # optimal_weight() is a research helper only; it is not a production workflow.
+  # Authoritative legacy weights: w_T = 1 - w_E. transfer_weight must match that rule.
   method: empirical_only
   empirical_weight: 0.5
   transfer_weight: 0.5

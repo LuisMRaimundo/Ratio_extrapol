@@ -112,17 +112,26 @@ class TestPrecedenceAndWeights(unittest.TestCase):
         self.assertEqual((we, wt), (0.5, 0.5))
 
     def test_fixed_unequal_via_legacy_weights(self):
-        cfg = CalibrationConfig(combination_method="legacy_equal_weight", empirical_weight=0.65)
+        cfg = CalibrationConfig(
+            combination_method="legacy_equal_weight",
+            empirical_weight=0.65,
+            transfer_weight=0.35,
+        )
         val, _, we, wt = combine_empirical_and_modelled(10.0, 20.0, cfg)
         self.assertAlmostEqual(val, 0.65 * 10 + 0.35 * 20)
         self.assertAlmostEqual(we + wt, 1.0)
 
     def test_one_zero_weights(self):
-        cfg = CalibrationConfig(combination_method="legacy_equal_weight", empirical_weight=1.0)
+        cfg = CalibrationConfig(
+            combination_method="legacy_equal_weight",
+            empirical_weight=1.0,
+            transfer_weight=0.0,
+        )
         val, _, we, wt = combine_empirical_and_modelled(10.0, 20.0, cfg)
         self.assertAlmostEqual(val, 10.0)
         self.assertEqual((we, wt), (1.0, 0.0))
         cfg.empirical_weight = 0.0
+        cfg.transfer_weight = 1.0
         val, _, we, wt = combine_empirical_and_modelled(10.0, 20.0, cfg)
         self.assertAlmostEqual(val, 20.0)
 

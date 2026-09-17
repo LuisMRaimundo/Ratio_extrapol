@@ -18,7 +18,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
+from .calibration import CalibrationConfig, load_config, normalize_combination_method
 from .catalog import DEFAULT_MEASURED_CEILING_MIDI, orchestral_group, resolve_instrument
+from .media_policy import resolve_iowa_orch_pair, uses_woodwind_combination
 from .evidence import (
     SHARED_L_MEDIA_CAVEAT,
     evidence_map_rows,
@@ -384,6 +386,45 @@ def _mean_available(*vals: Optional[float]) -> Optional[float]:
     return (sum(xs) / len(xs)) if xs else None
 
 
+def _media_sheet_formula(
+    iowa_col: str,
+    orch_col: str,
+    row: str,
+    instrument: str,
+    technique: str,
+    cfg: Optional[CalibrationConfig],
+) -> str:
+    """Excel formula matching the production IOWA/ORCH resolver."""
+    iowa = f"{iowa_col}{row}"
+    orch = f"{orch_col}{row}"
+    if uses_woodwind_combination(instrument, technique):
+        cfg = cfg or load_config()
+        method = normalize_combination_method(cfg.combination_method)
+        if method == "empirical_only":
+            return f'=IF({iowa}<>"",{iowa},IF({orch}<>"",{orch},""))'
+        if method == "legacy_equal_weight":
+            we = float(cfg.empirical_weight)
+            wt = 1.0 - we
+            return (
+                f'=IF(AND({iowa}<>"",{orch}<>""),{we}*{iowa}+{wt}*{orch},'
+                f'IF({iowa}<>"",{iowa},IF({orch}<>"",{orch},"")))'
+            )
+    return f'=IF(COUNT({iowa}:{orch})=0,"",AVERAGE({iowa}:{orch}))'
+
+
+def _resolved_media(
+    iowa: Optional[float],
+    orch: Optional[float],
+    instrument: str,
+    technique: str,
+    cfg: Optional[CalibrationConfig],
+) -> Optional[float]:
+    value, _, _, _ = resolve_iowa_orch_pair(
+        iowa, orch, instrument=instrument, technique=technique, cfg=cfg
+    )
+    return value
+
+
 def _write_media(
     ws: Worksheet,
     midis: list[int],
@@ -391,6 +432,8 @@ def _write_media(
     instrument: str = "violin",
     sheet_names: Optional[dict[tuple[str, str], str]] = None,
     layers: Optional[dict] = None,
+    technique: str = "ordinario",
+    cfg: Optional[CalibrationConfig] = None,
 ) -> None:
     headers = [
         "Note",
@@ -457,9 +500,9 @@ def _write_media(
             omf = _layer_cdm(layers, "ORCH", "mf", midi)
             iff_ = _layer_cdm(layers, "IOWA", "ff", midi)
             off = _layer_cdm(layers, "ORCH", "ff", midi)
-            mpp = ipp if ipp is not None else opp
-            mmf = imf if imf is not None else omf
-            mff = iff_ if iff_ is not None else off
+            mpp = _resolved_media(ipp, opp, instrument, technique, cfg)
+            mmf = _resolved_media(imf, omf, instrument, technique, cfg)
+            mff = _resolved_media(iff_, off, instrument, technique, cfg)
             row = [
                 midi_to_label(midi),
                 ipp,
@@ -495,17 +538,20 @@ def _write_media(
                 _status(midi, ceiling),
             ]
         else:
+            media_pp = _media_sheet_formula("B", "C", r, instrument, technique, cfg)
+            media_mf = _media_sheet_formula("E", "F", r, instrument, technique, cfg)
+            media_ff = _media_sheet_formula("H", "I", r, instrument, technique, cfg)
             row = [
                 midi_to_label(midi),
                 f'=IF({iowa_pp}!{CDM_CELL[("IOWA","pp")]}{r}="","",{iowa_pp}!{CDM_CELL[("IOWA","pp")]}{r})',
                 f'=IF({orch_pp}!{CDM_CELL[("ORCH","pp")]}{r}="","",{orch_pp}!{CDM_CELL[("ORCH","pp")]}{r})',
-                f'=IF(COUNT(B{r}:C{r})=0,"",AVERAGE(B{r}:C{r}))',
+                media_pp,
                 f'=IF({iowa_mf}!{CDM_CELL[("IOWA","mf")]}{r}="","",{iowa_mf}!{CDM_CELL[("IOWA","mf")]}{r})',
                 f'=IF({orch_mf}!{CDM_CELL[("ORCH","mf")]}{r}="","",{orch_mf}!{CDM_CELL[("ORCH","mf")]}{r})',
-                f'=IF(COUNT(E{r}:F{r})=0,"",AVERAGE(E{r}:F{r}))',
+                media_mf,
                 f'=IF({iowa_ff}!{CDM_CELL[("IOWA","ff")]}{r}="","",{iowa_ff}!{CDM_CELL[("IOWA","ff")]}{r})',
                 f'=IF({orch_ff}!{CDM_CELL[("ORCH","ff")]}{r}="","",{orch_ff}!{CDM_CELL[("ORCH","ff")]}{r})',
-                f'=IF(COUNT(H{r}:I{r})=0,"",AVERAGE(H{r}:I{r}))',
+                media_ff,
                 None,
                 f"=A{r}",
                 f"=D{r}",
@@ -899,6 +945,14 @@ def _write_summary(
     ws.column_dimensions["D"].width = 18
 
 
+def _acoustic_table_value(ic, oc, qa_rec, instrument_id, technique, cfg=None):
+    if qa_rec is not None and "final_value" in qa_rec:
+        return qa_rec.get("final_value")
+    iowa = ic.value if ic is not None else None
+    orch = oc.value if oc is not None else None
+    return _resolved_media(iowa, orch, instrument_id, technique, cfg)
+
+
 def _write_acoustic_table(
     ws: Worksheet,
     midis: list[int],
@@ -909,6 +963,7 @@ def _write_acoustic_table(
     instrument_id: str = "violin",
     media_name: str = "Violin_Media",
     final_by_cell: Optional[dict] = None,
+    cfg: Optional[CalibrationConfig] = None,
 ) -> tuple[int, int, int]:
     headers = [
         "instrument_id",
@@ -954,17 +1009,16 @@ def _write_acoustic_table(
                 )
             else:
                 status = "review_required" if above else "accepted"
+            notes = f"{technique}; {kinds}; see Media_Uncertainty row {mu_row}"
+            if qa_rec and qa_rec.get("provenance"):
+                notes = f"{notes}; provenance={qa_rec['provenance']}"
             ws.append(
                 [
                     instrument_id,
                     midi_to_label(midi),
                     midi,
                     dyn,
-                    (
-                        (ic.value if ic and (ic.origin or "").lower() == "measured" else None)
-                        or (ic.value if ic else None)
-                        or (oc.value if oc else None)
-                    ),
+                    _acoustic_table_value(ic, oc, qa_rec, instrument_id, technique, cfg),
                     "combined_density_metric",
                     "cdm_technique_sustain_v1",
                     "register_extrapolated" if above else "media_unique",
@@ -975,7 +1029,7 @@ def _write_acoustic_table(
                     "identity_v1",
                     "low" if above else "medium",
                     status,
-                    f"{technique}; {kinds}; see Media_Uncertainty row {mu_row}",
+                    notes,
                     None,
                     None,
                     None,
@@ -1050,7 +1104,17 @@ def export_zenodo_workbook(
     _write_summary_empirical(wb.create_sheet("Summary_Empirical_ORCH"), project, technique)
 
     media = wb.create_sheet(media_name)
-    _write_media(media, midis, ceiling_midi, instrument, sheet_names=names, layers=layers)
+    cfg = load_config() if ww_ordinario else None
+    _write_media(
+        media,
+        midis,
+        ceiling_midi,
+        instrument,
+        sheet_names=names,
+        layers=layers,
+        technique=technique,
+        cfg=cfg,
+    )
 
     orch_measured = sum(
         1
@@ -1185,8 +1249,9 @@ def export_zenodo_workbook(
             (
                 "statistic_completed_grid",
                 (
-                    f"{media_name}: Iowa measured cells kept as measured (empirical_only); "
-                    "ORCH is orchidea_family_transfer_estimate, used only where Iowa is absent."
+                    f"{media_name}: combination={cfg.combination_method if cfg else 'empirical_only'}; "
+                    "default empirical_only keeps Iowa when present and uses transfer only in a gap. "
+                    "A blend is COMBINED_ESTIMATE, not a measurement."
                     if ww_ordinario
                     else f"{media_name} = AVERAGE of available IOWA and ORCH values (shared L — not independent replication)."
                 ),
@@ -1212,9 +1277,15 @@ def export_zenodo_workbook(
         ("Sheet type", "identification sheet", "README or Zenodo metadata sheet documenting the file.", "Yes"),
         (
             "Aggregation",
-            "empirical_only / resolved Media" if ww_ordinario else "arithmetic mean",
             (
-                "Media is the resolved empirical-priority calibration: Iowa measurement if present, else an accepted transfer. Not generally (IOWA+ORCH)/2."
+                f"{cfg.combination_method if cfg else 'empirical_only'} / resolved Media"
+                if ww_ordinario
+                else "arithmetic mean"
+            ),
+            (
+                "Media follows the selected combination method. empirical_only keeps a valid Iowa cell; "
+                "equal_weight / legacy_equal_weight mix both inputs (w_T = 1 - w_E). "
+                "Unsupported modes are rejected."
                 if ww_ordinario
                 else "(ORCH + IOWA) / 2 for each note and dynamic level."
             ),
@@ -1224,7 +1295,9 @@ def export_zenodo_workbook(
             "Aggregation",
             "median",
             "Equals the midpoint with two collections; not the stated aim here.",
-            "No — woodwind Media is empirical_only" if ww_ordinario else "No — this file uses AVERAGE()",
+            "No — woodwind Media uses the selected combination method"
+            if ww_ordinario
+            else "No — this file uses AVERAGE()",
         ),
         ("Dynamic", "pp", "Pianissimo dynamic level.", "Yes"),
         ("Dynamic", "mf", "Mezzo-forte dynamic level.", "Yes"),
@@ -1333,7 +1406,6 @@ def export_zenodo_workbook(
             build_final_rows,
             build_validation_tables,
             curves_from_project,
-            load_config,
             origins_from_project,
             qa_index,
             transfer_estimates_from_layers,
@@ -1369,6 +1441,7 @@ def export_zenodo_workbook(
         instrument_id=iid,
         media_name=media_name,
         final_by_cell=final_by_cell,
+        cfg=cfg if ww_ordinario else None,
     )
 
     prov = wb.create_sheet("Provenance")

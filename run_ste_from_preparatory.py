@@ -33,7 +33,8 @@ from ste_lab.excel_export import export_workbook
 from ste_lab.notes import parse_pitch
 from ste_lab.qa import audit_project
 from ste_lab.session import Project
-from ste_lab.transfer import Anchor, media_of
+from ste_lab.media_policy import production_media_of
+from ste_lab.transfer import Anchor
 from ste_lab.zenodo_export import export_zenodo_workbook
 
 DEFAULT_PREP = Path(r"D:\CORDAS_3\VIOLA 4\Viola_STE_preparatory.xlsx")
@@ -494,7 +495,12 @@ def run(
                 and lg.cells
             ]
             if peers:
-                media = media_of(peers, name=f"{instr_id}_Media_{effect}_{dyn}")
+                media = production_media_of(
+                    peers,
+                    name=f"{instr_id}_Media_{effect}_{dyn}",
+                    instrument=instr_id,
+                    technique=effect,
+                )
                 project.add_layer(media)
                 media_layers.append(media)
 
@@ -571,10 +577,11 @@ def _export_ordinario_spine(pack, out, instr_id, instr_file, arco, op, extra, pr
             and lg.cells
         ]
         if len(peers) >= 1:
-            media = media_of(
+            media = production_media_of(
                 peers,
                 name=f"{instr_id}_Media_ordinario_{dyn}",
-                prefer_measured=woodwind,
+                instrument=instr_id,
+                technique="ordinario",
             )
             project.add_layer(media)
             media_layers.append(media)

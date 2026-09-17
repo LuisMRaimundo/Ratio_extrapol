@@ -64,14 +64,16 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 </head>
 <body>
 <header class="cover">
-  <h1>STE Lab — User manual and technical manual</h1>
+  <h1>Ratio_extrapol — User manual and technical manual</h1>
   <p>
-    Spectral Technique Extrapolation Laboratory. One document, two voices:
-    a plain-language user’s guide, then the scientific specification.
-    Version 1.3.2 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
+    Current project name: <b>Ratio_extrapol</b>. The GUI and package still say “STE Lab” / <code>ste_lab</code> (legacy identifiers).
+    One document, two voices: a plain-language user’s guide, then the scientific specification.
+    Package version 1.3.3 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
     Two family workflows: bowed strings keep separate effect books; woodwinds use ordinario family-transfer calibration.
     Source workbooks are never overwritten. Genuine compiled Iowa files are merged (longest-file-wins is prohibited).
+    Production Media, AcousticTable, and Final_Calibration share one family-specific resolver.
     §5 states the formulas the code evaluates. Help opens this HTML as a local file.
+    Historical published workbooks were not rewritten by the export-consistency fixes.
   </p>
 </header>
 <nav>
@@ -91,7 +93,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <main>
 
 <h2 id="who">1. Who this is for</h2>
-<p>This folder — <code>C:\Users\lmr20\Desktop\Código extrapolação\Extrapol_data</code> — is the working copy of <b>STE Lab</b>: a small program that takes measured spectral-density numbers for one playing technique and estimates the same numbers for another technique, another collection, or a missing note — without ever pretending the estimate was recorded. It is not the canonical STE product on E: / GitHub; use this folder for Desktop Lab batches and the preparatory Excel runner.</p>
+<p>This folder — <code>C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol</code> — is the working copy of <b>Ratio_extrapol</b> (GitHub: LuisMRaimundo/Ratio_extrapol). The program still prints “STE Lab” in the GUI. It takes measured spectral-density numbers for one playing technique and estimates the same numbers for another technique, another collection, or a missing note — without ever pretending the estimate was recorded. It is not the separate Strings Techniques Extrapolation product on E: / GitHub.</p>
 <p>Read Part A if you want to press the right buttons. Read Part B if you need to defend a number in a paper, a Zenodo deposit, or a thesis chapter. The green boxes and the blue boxes on each topic say the same thing in those two languages.</p>
 
 <h2 id="idea">2. The idea in two languages</h2>
@@ -164,15 +166,15 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <h3>3.5 The four extrapolation tools</h3>
 <table>
   <tr><th>Button</th><th>Plain meaning</th><th>When to use it</th></tr>
-  <tr><td>Fill selected layer</td><td>Guess the missing notes of the <em>same</em> curve.</td><td>Holes inside a measured series. Cap the extrapolation (default 12 semitones).</td></tr>
-  <tr><td>Technique transfer</td><td>Turn an arco list into a mute / ponticello / tasto / harmonics list.</td><td>You have overlap pairs (anchors). Default method: log-ratio.</td></tr>
+  <tr><td>Fill selected layer</td><td>Guess the missing notes of the <em>same</em> curve. Interior and a short exterior cap.</td><td>PCHIP needs ≥3 known notes. Two-point PCHIP is rejected (choose linear). Exterior tags are <code>extrapolated_pchip</code> / <code>extrapolated_hold</code>, not ridge.</td></tr>
+  <tr><td>Technique transfer</td><td>Turn an arco list into a mute / ponticello / tasto / harmonics list.</td><td>You have overlap pairs (anchors). Default method: log-ratio. Edge <i>L</i> is held.</td></tr>
   <tr><td>Family transfer</td><td>Copy a curve onto a cousin instrument (clarinet → bass clarinet).</td><td>Same family only. Concert pitch, or align lowest notes.</td></tr>
-  <tr><td>Average layers</td><td>Media of IOWA and ORCH on the same technique and dynamic.</td><td>String effect books: arithmetic mean of peers (historical rule). Woodwind ordinario: a measured target cell wins (<code>empirical_only</code>); transfer fills only a missing cell. One-sided cells are never halved.</td></tr>
+  <tr><td>Production Media</td><td>IOWA/ORCH Media on the same technique and dynamic.</td><td>Strings: arithmetic mean of present IOWA/ORCH. Woodwind ordinario: default <code>empirical_only</code>. Philharmonia/McGill are not included. One-sided cells are never halved.</td></tr>
 </table>
 <p>Anchors for technique transfer are three numbers per line: <code>note  sourceCDM  targetCDM</code>. Example: <code>G3  40.18  33.42</code> means “at G3, arco was 40.18 and the mute was 33.42”.</p>
 
 <h3>3.6 Export</h3>
-<p>Tab 4 → <b>Generate organised Excel</b>. The file follows schema 1.2.0 (the violin sordino Zenodo book): one sheet per collection × dynamic, a Media sheet with Excel <code>AVERAGE()</code> formulas, AcousticTable, QA_Flags, provenance. Import understands both STE Lab files and the older viola-style books.</p>
+<p>Tab 4 → <b>Generate organised Excel</b>. The file follows schema 1.2.0 (the violin sordino Zenodo book): one sheet per collection × dynamic, a Media sheet whose literals or formulas follow the family resolver, AcousticTable, QA_Flags, provenance. Import understands both STE Lab files and the older viola-style books. Historical published workbooks were not rewritten.</p>
 <p>The <b>Media pp / mf / ff</b> columns carry Excel conditional formatting by orchestral family: <span style="background:#BDD7EE;padding:0 6px;">blue = strings</span>, <span style="background:#C6EFCE;padding:0 6px;">green = brass</span>, <span style="background:#F8CBAD;padding:0 6px;">orange = woodwinds</span>. Violin books are therefore blue. A hidden <code>orchestral_group</code> cell next to those columns drives the rule, so a later trumpet or clarinet export recolours itself without a second code path.</p>
 <p>The full Lab is for interactive, one-layer work. For production, prefer the preparatory Excel runner (§3.7). The small window dispatches by family (<code>ste_lab/pipeline.py</code>): strings rebuild effects and write one STE + Zenodo pair per grounded technique plus ordinario; woodwinds rebuild the measured Iowa spine and write the ordinario calibration books. Dedicated <code>run_ste_effects_batch*.py</code> scripts remain on disk (hardcoded deposit paths) and are not called by the GUI.</p>
 
@@ -338,13 +340,13 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <p>That inherited ratio is a transfer identity, not a new dynamic calibration.</p>
 <p><b>Harmonics floor:</b> any cell with <i>m &lt; m</i><sub>floor</sub> is deleted after transfer. Preparatory runner follows Instrument: violin 79, viola 72, cello 60, double bass 52.</p>
 
-<h3>5.6 Media — <code>media_of</code> (family-specific)</h3>
-<p class="src">ste_lab/transfer.py · media_of(prefer_measured=…) &nbsp;|&nbsp; run_ste_from_preparatory._export_ordinario_spine</p>
-<p><b>Bowed-string effect and ordinario books</b> (<code>prefer_measured=False</code>, the historical rule). At each MIDI <i>m</i>, let <i>V(m) = { v<sub>j</sub>(m) }</i> be the IOWA/ORCH cells present there. Let <i>k = |V(m)|</i>.</p>
+<h3>5.6 Media — family-specific production resolver</h3>
+<p class="src">ste_lab/media_policy.py · resolve_iowa_orch_pair / production_media_of &nbsp;|&nbsp; run_ste_from_preparatory &nbsp;|&nbsp; GUI Average</p>
+<p><b>Bowed-string effect and ordinario books</b> (string arithmetic mean of production collections only). At each MIDI <i>m</i>, let <i>V(m)</i> be the present IOWA and ORCH values. Philharmonia and McGill are context layers and are never added to this mean.</p>
 <p class="eq"><i>μ(m) = (1/k) Σ<sub>j=1</sub><sup>k</sup> v<sub>j</sub>(m)</i></p>
-<p>If only one collection has <i>m</i>, <i>μ(m)</i> equals that value (not half of it). Origin is <code>generated</code> when <i>k &gt; 1</i>, else the single source origin. Shared technique-transfer <i>L̂</i> means <i>μ</i> is not a second independent estimate of the effect.</p>
-<p><b>Woodwind ordinario</b> (<code>prefer_measured=True</code>, <code>empirical_only</code>). If any present cell is origin <code>measured</code>, that measurement is kept and transfer is ignored at that MIDI. Transfer fills only a genuinely missing target cell. The comment on the Media cell is <code>empirical_only (woodwind)</code>. Do not change string Media mathematics to match this wording.</p>
-<p>Zenodo Media sheets use Excel <code>AVERAGE</code> of the same pair, with <code>IF(COUNT=0,"")</code>, on the values that were written into the collection columns.</p>
+<p>If only one collection has <i>m</i>, <i>μ(m)</i> equals that value (not half of it). If neither is present, the cell is missing, not zero. Shared technique-transfer <i>L̂</i> means a string mean is not a second independent measurement of the effect.</p>
+<p><b>Woodwind ordinario</b> follows <code>calibration.yaml</code> combination. Default <code>empirical_only</code>: keep a valid target empirical value; use a valid transfer value only when the empirical value is absent. Supported alternatives: <code>equal_weight</code> (0.5/0.5) and <code>legacy_equal_weight</code> with the rule <i>w<sub>T</sub> = 1 − w<sub>E</sub></i>. <code>fixed_weight</code> and <code>validation_optimised</code> are rejected until they have a validated specification. <code>optimal_weight()</code> is a research helper only. A blended output is <code>COMBINED_ESTIMATE</code>, not <code>MEASURED</code>.</p>
+<p>The same resolver writes in-memory Media, Zenodo Media literals or matching Excel formulas, AcousticTable, and Final_Calibration. Per-row weights are the effective weights; configured weights are exported separately.</p>
 
 <h3>5.7 Other methods (full Lab only; not the preparatory runner)</h3>
 <p><b>Global linear ratio</b> (<code>method="linear_ratio"</code>):</p>
@@ -355,7 +357,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <p><b>Family transfer, register-relative:</b></p>
 <p class="eq"><i>m'</i> = <i>m</i><sub>target low</sub> + (<i>m</i> − <i>m</i><sub>source low</sub>)</p>
 <p class="eq"><i>T̂(m') = S(m) · ρ</i><sub>family</sub></p>
-<p><b>Fill missing notes on one layer</b> (<code>fill_missing</code>), default method <code>pchip</code> on the <em>CDM values</em> (not on <i>L</i>), <code>extrapolate=True</code>, grid capped at ± <code>max_extrap_semitones</code> (default 12) beyond the last known MIDI. Alternatives: linear <code>np.interp</code>; polynomial <code>np.polyfit</code> / <code>np.polyval</code> of chosen degree. The preparatory runner does not call <code>fill_missing</code>.</p>
+<p><b>Fill missing notes on one layer</b> (<code>fill_missing</code>), default method <code>pchip</code> on the <em>CDM values</em> (not on <i>L</i>). Interior of the measured MIDI span is labelled <code>interpolated</code>. Exterior cells may be written up to ± <code>max_extrap_semitones</code> (default 12): PCHIP uses <code>extrapolate=True</code> and origin <code>extrapolated_pchip</code> (not ridge regression) and requires at least three known points; two-point PCHIP is rejected with no silent substitute. Linear uses NumPy endpoint hold outside the span and origin <code>extrapolated_hold</code>, not interpolated. Polynomial remains <code>extrapolated_polynomial</code>. Technique-transfer still holds edge <i>L</i>; that operator is separate and was not changed. The preparatory runner does not call <code>fill_missing</code>.</p>
 
 <h3>5.8 What the code does not compute</h3>
 <ul>
@@ -377,7 +379,8 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <p class="eq"><i>L</i><sub>instr</sub><i>(m) = ln</i>(IOWA<sub>target</sub><i>(m)</i> / IOWA<sub>cl</sub><i>(m)</i>)</p>
 <p class="eq">ORCH<sub>target</sub><i>(m) =</i> ORCH<sub>cl</sub><i>(m) × exp</i>( clip(<i>L</i><sub>instr</sub><i>(m)</i>, −3, 3) )</p>
 <p><i>L</i><sub>coll</sub> and <i>L</i><sub>instr</sub> use the same hold-edge interpolator as technique transfer (§5.4). Iowa used to form <i>L</i><sub>instr</sub> is excluded from transfer validation. If there is no same-collection sibling overlap, <i>L</i><sub>instr</sub> is <code>UNDETERMINED</code> and no transfer cells are written.</p>
-<p><code>empirical_only</code>: a finite measured target value is the final value (weight 1 / 0). Transfer is used only when that cell is missing. Do not average a measurement with a transfer estimate unless <code>legacy_equal_weight</code> is explicitly selected.</p>
+<p><i>L</i><sub>coll</sub> is a stored diagnostic. Production does not multiply by <i>exp(L<sub>coll</sub>)</i>. The predictor already starts from the ORCH sibling donor; at matched unclipped anchors, applying <i>L</i><sub>instr</sub> there is equivalent to applying the collection ratio to the Iowa target. That identity is not claimed for every interpolated or clipped MIDI.</p>
+<p><code>empirical_only</code>: a finite measured target value is the final value (weight 1 / 0). Transfer is used only when that cell is missing. <code>equal_weight</code> and <code>legacy_equal_weight</code> do mix both inputs; those blended outputs are <code>COMBINED_ESTIMATE</code>. <code>fixed_weight</code> and <code>validation_optimised</code> are rejected. Authoritative weights: <i>w<sub>T</sub> = 1 − w<sub>E</sub></i>.</p>
 <p>QA on <code>Final_Calibration</code>: HIGH / MODERATE are production-eligible; REVIEW_REQUIRED is visible but <code>Accepted_Final=FALSE</code> unless <code>allow_review_required</code> is true (default false); distance &gt; 6 semitones is REJECTED. The notation catalog range (bass clarinet sounding 34–77) is not permission to delete a genuine measurement. The export grid is the catalog specification union the measured extrema.</p>
 
 <!-- ===================== TECHNICAL MANUAL ===================== -->
@@ -406,7 +409,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <li><b>F-061</b> is the project Combined Density Metric (spectral-density descriptor on sustains). It is not brightness, brilliance, “spectral richness,” or a count of audible harmonics. Report “F-061 decreased by x%,” then interpret with other descriptors if needed.</li>
   <li><b>Empirical_ORCH</b> (principal evidence on string books) = Orchidea cells whose Estimate is <code>measured</code>, at every dynamic that was recorded. Sul tasto does not appear. A dynamic that only inherited donor <i>L</i> does not appear there. On woodwind ordinario books the principal empirical sheet is target Iowa (<code>Measured_Data</code>), not a fake Orchidea recording of this instrument.</li>
   <li><b>Evidence_Map</b> lists IOWA / ORCH / Phil / McGill effect layers with <code>n_measured</code>, <code>n_modelled</code>, and <code>evidence_role</code> (empirical / inherited_dynamic / prediction / modelled_completion / context). <code>principal_evidence</code> is yes only for recorded Orchidea. Iowa that used same-dynamic <i>L</i> is <code>modelled_completion</code>, not inherited. Philharmonia and McGill are <code>context</code> — never principal.</li>
-  <li><b>Media</b> is family-specific (§5.6). String books: AVERAGE of populated IOWA/ORCH peers. Woodwind ordinario: measured target wins; transfer fills a gap. A single-source cell is that source, not half of it. Shared string <i>L</i> does <em>not</em> increase evidential strength for the relative effect. Use <code>Summary_Empirical_ORCH</code> for published string technique statistics.</li>
+  <li><b>Media</b> is family-specific (§5.6). String books: arithmetic mean of populated IOWA/ORCH peers. Woodwind ordinario: default empirical_only; equal_weight / legacy_equal_weight only when selected. A single-source cell is that source, not half of it. Shared string <i>L</i> does <em>not</em> increase evidential strength for the relative effect. Use <code>Summary_Empirical_ORCH</code> for published string technique statistics.</li>
   <li><b>Measured ceiling</b> (violin): MIDI 100. <code>reporting_status = above_measured_ceiling</code>; AcousticTable <code>cell_status = register_extrapolated</code>, <code>validation_status = review_required</code>. Summary_Measured_Range uses only the rows at or below the ceiling (completed grid, not principal evidence).</li>
   <li><b>IOWA effects</b>: no recordings. Every IOWA effect cell is <code>modelled_IOWA_anchored</code>. Evidence_Map is <code>modelled_completion</code> when same-dynamic anchors taught that layer; <code>inherited_dynamic</code> only when a donor (usually mf) was reused.</li>
   <li><b>Sul tasto</b>: violin may use Philharmonia piano tasto / piano ordinario as a <em>prediction</em>. Viola has no Philharmonia tasto tree — the preparatory runner skips any tasto rows and does not write a tasto book. Do not invent viola sul tasto.</li>
@@ -421,10 +424,13 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <tr><td><code>modelled_IOWA_anchored</code></td><td>IOWA_ordinario × exp(L̂), L̂ taught on another collection’s overlap.</td></tr>
   <tr><td><code>modelled_ORCHIDEA_anchored</code></td><td>ORCH hole or missing dynamic: ORCH_ordinario × exp(L̂).</td></tr>
   <tr><td><code>technique_transfer</code></td><td>Generic transfer tag when a more specific modelled_* tag was not applied.</td></tr>
-  <tr><td><code>interpolated</code> / <code>extrapolated_*</code></td><td>Fill-missing on the same layer.</td></tr>
+  <tr><td><code>interpolated</code></td><td>Fill inside the measured MIDI span.</td></tr>
+  <tr><td><code>extrapolated_pchip</code></td><td>PCHIP Fill outside the measured span. Not ridge regression.</td></tr>
+  <tr><td><code>extrapolated_hold</code></td><td>Linear Fill endpoint-hold outside the measured span. Not interpolated.</td></tr>
+  <tr><td><code>extrapolated_polynomial</code> / <code>extrapolated_ridge</code></td><td>Polynomial Fill, or a historical ridge-named tag still accepted on read.</td></tr>
   <tr><td><code>family_transfer</code></td><td>Mapped from a cousin instrument (full Lab).</td></tr>
   <tr><td><code>orchidea_family_transfer_estimate</code></td><td>Woodwind ORCH spine: <code>two_log_ratio</code> estimate, not a recording of this instrument.</td></tr>
-  <tr><td><code>combined_estimate</code></td><td>Deprecated 1.2.8 scalar donor×median. Never labelled TRANSFERRED.</td></tr>
+  <tr><td><code>combined_estimate</code></td><td>Blended empirical+modelled output, or the deprecated 1.2.8 scalar. Never labelled MEASURED or TRANSFERRED.</td></tr>
   <tr><td><code>generated</code></td><td>String Media or other derived layer; not a field recording.</td></tr>
   <tr><td><code>EMPIRICAL_CONFLICT</code></td><td>Same MIDI, materially different compiled values. Not averaged; not exported.</td></tr>
 </table>
@@ -452,9 +458,10 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <tr><td><code>ste_lab/notes.py</code></td><td>MIDI ↔ label, flats preferred.</td></tr>
   <tr><td><code>ste_lab/pipeline.py</code></td><td>Family dispatch: <code>pipeline_for_instrument</code>, <code>run_string_pipeline</code>, <code>run_woodwind_pipeline</code>, <code>DataDiscoveryError</code>.</td></tr>
   <tr><td><code>ste_lab/empirical.py</code></td><td>MeasuredObservation merge; conflict policy; <code>assert_not_source</code>.</td></tr>
-  <tr><td><code>ste_lab/calibration.py</code></td><td>Woodwind <code>two_log_ratio</code>, <code>empirical_only</code>, QA grades. Not used on string effect books.</td></tr>
+  <tr><td><code>ste_lab/calibration.py</code></td><td>Woodwind <code>two_log_ratio</code>, combination, QA grades. Not used on string effect books.</td></tr>
   <tr><td><code>ste_lab/calibration_export.py</code></td><td>Woodwind sheets: Measured_Data, Transfer_Estimates, Validation, Final_Calibration, Methodology.</td></tr>
-  <tr><td><code>ste_lab/transfer.py</code></td><td>Fill, technique transfer (hold-edge L), family transfer, <code>media_of(prefer_measured=…)</code>.</td></tr>
+  <tr><td><code>ste_lab/media_policy.py</code></td><td>Production IOWA/ORCH resolver for Media, GUI Average, and batch.</td></tr>
+  <tr><td><code>ste_lab/transfer.py</code></td><td>Fill, technique transfer (hold-edge L), family transfer, generic <code>media_of</code> helper.</td></tr>
   <tr><td><code>ste_lab/evidence.py</code></td><td>Evidence roles (empirical / inherited / modelled / context / prediction). Principal evidence is Orchidea measured only. Same-dynamic Iowa is not stamped inherited.</td></tr>
   <tr><td><code>ste_lab/qa.py</code></td><td>Audit flags (including shared-L Media, tasto prediction, inherited dynamics).</td></tr>
   <tr><td><code>ste_lab/excel_export.py</code></td><td>STE workbook in / out.</td></tr>
@@ -500,7 +507,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 </ul>
 <p>The small window shows the same warnings after Rebuild. A string deposit with Orchidea effect trees and an empty <code>Anchors_all</code> now <b>stops</b> (<code>DataDiscoveryError</code>) instead of continuing as ordinario-only.</p>
 <p>Tests (from this folder):</p>
-<p><code>python -m pytest test_pipeline_regression.py test_calibration.py test_run_ste_from_preparatory.py</code></p>
+<p><code>python -m unittest discover -s . -p "test_*.py"</code></p>
 <p>They check string <i>T̂ = S · exp(L)</i>, hold-edge L, harmonics floor, skip tasto, recorded Orchidea staying <code>measured</code>, Evidence_Map stamps, woodwind <code>two_log_ratio</code> / <code>empirical_only</code>, Iowa multi-file union, source-hash immutability, notes beyond catalog <code>sounding_high</code>, and the eight-file string contract (harmonics / sul ponticello / con sordino / ordinario × STE + Zenodo).</p>
 
 <h2 id="files">7. File map (this Desktop folder)</h2>
@@ -513,7 +520,9 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <tr><td><code>build_ste_preparatory.py</code></td><td>Remake a preparatory pack from a chosen folder.</td></tr>
   <tr><td><code>build_viola_ste_preparatory.py</code></td><td>Remake the viola preparatory pack (wrapper).</td></tr>
   <tr><td><code>ste_lab/pipeline.py</code></td><td>String vs woodwind runner selection.</td></tr>
-  <tr><td><code>test_run_ste_from_preparatory.py</code> / <code>test_calibration.py</code> / <code>test_pipeline_regression.py</code></td><td>Identity, woodwind calibration, family-dispatch integration tests.</td></tr>
+  <tr><td><code>test_run_ste_from_preparatory.py</code> / <code>test_calibration.py</code> / <code>test_pipeline_regression.py</code> / <code>test_export_consistency.py</code></td><td>Identity, woodwind calibration, family-dispatch, and export-consistency tests.</td></tr>
+  <tr><td><code>docs/Ratio_Extrapol_math_formula.md</code></td><td>Mathematical reference (StackEdit <code>$...$</code> / <code>$$...$$</code>).</td></tr>
+  <tr><td><code>README.md</code></td><td>Project identity, Media/Fill/combination policies, how to run tests.</td></tr>
   <tr><td><code>STE_Lab_User_and_Technical_Manual.html</code></td><td>This document. Must sit next to the launchers. Opened as a local file, not as a web search.</td></tr>
   <tr><td><code>run_ste_effects_batch*.py</code></td><td>Legacy tree-walking batches (violin / viola / cello / bass).</td></tr>
   <tr><td><code>ste_lab\</code></td><td>Source package, including <code>prep_gui.py</code>. Do not point PYTHONPATH at this folder if the E: GitHub STE repo is the canonical product.</td></tr>
@@ -526,7 +535,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <tr><td>Arco normal / ordinario</td><td>Ordinary bowing, no mute, no special contact point.</td><td>Baseline technique; L ≡ 0 in the comparative layer.</td></tr>
   <tr><td>L</td><td>How much the effect changed F-061, on a log scale.</td><td>ln(technique / ordinario).</td></tr>
   <tr><td>Anchor</td><td>A note we have in both lists, used to learn the change.</td><td>Pair (S(m), T(m)) ∈ overlap.</td></tr>
-  <tr><td>Media</td><td>A completed-grid convenience — not a second experiment. Meaning depends on family.</td><td>Strings: arithmetic mean of IOWA/ORCH peers. Woodwind ordinario: measured target wins (<code>empirical_only</code>).</td></tr>
+  <tr><td>Media</td><td>A completed-grid convenience — not a second experiment. Meaning depends on family.</td><td>Strings: arithmetic mean of present IOWA/ORCH. Woodwind ordinario: default <code>empirical_only</code>; supported mixes are <code>COMBINED_ESTIMATE</code>.</td></tr>
   <tr><td>Family pipeline</td><td>Strings write one book per effect; woodwinds write ordinario calibration.</td><td><code>pipeline_for_instrument</code> → <code>strings</code> | <code>woodwinds</code>.</td></tr>
   <tr><td>Generated media</td><td>The woodwind spine written beside the deposit, never on top of the source book.</td><td><code>{root}/generated/{Display}_generated_media.xlsx</code>.</td></tr>
   <tr><td>Empirical_ORCH</td><td>The recorded Orchidea notes only — every recorded dynamic, not only mf. Use this when you claim a measured result.</td><td>Principal evidence layer; Estimate = measured. No L, no hole-fill.</td></tr>
@@ -546,7 +555,9 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <tr><td>High notes near 0</td><td>Old file from before hold-edge L.</td><td>Re-run the preparatory runner or the instrument batch.</td></tr>
   <tr><td>G3 harmonics ~800</td><td>L from the first harmonic applied below that pitch.</td><td>Blank below the instrument floor (violin 79, viola 72, cello 60, bass 52).</td></tr>
   <tr><td>Help → Open full manual opens an Edge <em>search</em> page</td><td>Older code sent a <code>file://</code> URI. This folder name has spaces and accents (<code>Código extrapolação</code>); Edge searched that string instead of opening the file.</td><td>Use the current Lab. Close and reopen the window, then press the button again. The HTML is opened with <code>os.startfile</code> on the real path. If you still see a search page, open the HTML from Explorer once and keep it next to the launchers.</td></tr>
-  <tr><td>Help button says the manual is missing</td><td>The HTML is not next to the launchers.</td><td>Keep <code>STE_Lab_User_and_Technical_Manual.html</code> in <code>Extrapol_data</code>.</td></tr>
+  <tr><td>Help button says the manual is missing</td><td>The HTML is not next to the launchers.</td><td>Keep <code>STE_Lab_User_and_Technical_Manual.html</code> in <code>Ratio_Extrapol</code>.</td></tr>
+  <tr><td>Fill says PCHIP needs at least 3 known values</td><td>Two-point PCHIP is rejected on purpose.</td><td>Choose linear, or add another measured note. The layer is left unchanged.</td></tr>
+  <tr><td><code>ConfigurationError</code> on combination method</td><td><code>fixed_weight</code>, <code>validation_optimised</code>, or a typo.</td><td>Use <code>empirical_only</code>, <code>equal_weight</code>, or <code>legacy_equal_weight</code>. Keep <code>transfer_weight = 1 − empirical_weight</code>.</td></tr>
   <tr><td>Rebuild still used viola trees</td><td>Look in folder was still <code>D:\CORDAS_3\VIOLA 4</code>.</td><td>Tick Rebuild, set Instrument, and set Look in folder to that instrument’s deposit (Cello suggests <code>D:\CORDAS_3\CELLO</code>). Close and reopen the window if you still see the old checkbox text.</td></tr>
   <tr><td><code>Cello_STE_*.xlsx</code> with viola-like MIDI / many QA flags</td><td>Instrument was set to Cello while Preparatory Excel was still the viola pack (Rebuild off).</td><td>Those files are viola numbers with cello names. Do not deposit them. Point --prep at a real cello preparatory workbook.</td></tr>
   <tr><td>Excel Media shows blanks</td><td>Formulas not calculated.</td><td>Open the file in Excel once (or LibreOffice) and save.</td></tr>
@@ -556,8 +567,8 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <tr><td>Orchidea sordino ff missing from Empirical_ORCH / log has no <code>(no L)</code></td><td>Preparatory pack is older than the recorded-layer rule (mf-only <code>ORCH_sordino_mf</code>).</td><td>Tick Rebuild + Run so <code>ORCH_sordino_pp/mf/ff</code> enter as measured. Look for <code>ORCH ff recorded n=… (no L)</code>.</td></tr>
   <tr><td>Evidence_Map says Iowa sordino pp/ff inherited mf, or McGill/Phil are principal</td><td>Book written before the stamp fix (v1.2.4).</td><td>CDM values can stay. Re-run (Rebuild optional) so Evidence_Map shows modelled_completion for same-dynamic Iowa and context for Phil/McGill.</td></tr>
   <tr><td>A sul tasto book appeared</td><td>Someone typed tasto in the big Lab, or used the violin batch.</td><td>Viola preparatory run must not write tasto. Delete the book; do not invent pairs.</td></tr>
-  <tr><td>String run wrote only ordinario</td><td>Older generic path continued when <code>Anchors_all</code> was empty, or Look in folder missed the Orchidea effect trees.</td><td>Use v1.3.2. Tick Rebuild. If effect trees exist and anchors are empty, the run must stop with <code>DataDiscoveryError</code>. Check <code>ORCH_*</code> / <code>ORCH_VLA</code> subfolders (<code>harmonics</code>, <code>sul-ponticello</code>, <code>con-sord</code>).</td></tr>
-  <tr><td>Iowa notes missing from bass-clarinet <code>Measured_Data</code></td><td>Pre-1.3.2 longest-file-wins, or generated media overwrote the source book.</td><td>Rebuild with v1.3.2. Confirm <code>n_dropped=0</code> in the log. Hash the source <code>*Zenodo_collections*media.xlsx</code> before and after — it must not change. Generated spine is under <code>generated/</code>.</td></tr>
+  <tr><td>String run wrote only ordinario</td><td>Older generic path continued when <code>Anchors_all</code> was empty, or Look in folder missed the Orchidea effect trees.</td><td>Use the current tree. Tick Rebuild. If effect trees exist and anchors are empty, the run must stop with <code>DataDiscoveryError</code>. Check <code>ORCH_*</code> / <code>ORCH_VLA</code> subfolders (<code>harmonics</code>, <code>sul-ponticello</code>, <code>con-sord</code>).</td></tr>
+  <tr><td>Iowa notes missing from bass-clarinet <code>Measured_Data</code></td><td>Pre-1.3.2 longest-file-wins, or generated media overwrote the source book.</td><td>Rebuild with the current tree. Confirm <code>n_dropped=0</code> in the log. Hash the source <code>*Zenodo_collections*media.xlsx</code> before and after — it must not change. Generated spine is under <code>generated/</code>.</td></tr>
   <tr><td><code>Refusing to overwrite source workbook</code></td><td>An output path resolved to an input used in this run.</td><td>Expected safeguard. Write generated files under <code>generated/</code> or the results folder, not over the source book.</td></tr>
   <tr><td>Woodwind sheets on a viola book</td><td>Instrument was bass clarinet while the prep was a viola pack, or an old generic runner was used.</td><td>Instrument must match the deposit. String effect books must not contain <code>Final_Calibration</code> / woodwind <code>Methodology</code>.</td></tr>
   <tr><td>Small window used the wrong Excel</td><td>Rebuild hunts Look in folder; without Rebuild, data come from Preparatory Excel.</td><td>Match Instrument, Look in folder, Preparatory Excel and Save folder to the same deposit. Do not save viola output into <code>D:\CORDAS_3\CELLO</code>.</td></tr>
@@ -566,15 +577,16 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 <h3>9.1 Keyboard and Help</h3>
 <ul>
   <li><kbd>F1</kbd> or header <b>Help</b> — opens the short in-app text window (does not start Edge by itself).</li>
-  <li>In-app Help → <b>Open full manual</b> (full Lab) or <b>Open full Lab manual</b> (small window) — opens this HTML with the default Windows handler for <code>.html</code> (<code>os.startfile</code> on <code>…\Extrapol_data\STE_Lab_User_and_Technical_Manual.html</code>).</li>
+  <li>In-app Help → <b>Open full manual</b> (full Lab) or <b>Open full Lab manual</b> (small window) — opens this HTML with the default Windows handler for <code>.html</code> (<code>os.startfile</code> on <code>…\Ratio_Extrapol\STE_Lab_User_and_Technical_Manual.html</code>).</li>
   <li>Do not hand the browser a <code>file://</code> URI of this path. Accents in <code>Código extrapolação</code> make Edge show a blank search page instead of the manual.</li>
 </ul>
 
 <footer>
-  STE Lab v1.3.2 · User manual + technical manual · Desktop working copy
-  <code>C:\Users\lmr20\Desktop\Código extrapolação\Extrapol_data</code>.
+  Ratio_extrapol · package <code>ste_lab</code> v1.3.3 · User manual + technical manual ·
+  <code>C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol</code>.
   Rebuild examples: <code>D:\CORDAS_3\VIOLA 4</code>, <code>D:\CORDAS_3\CELLO</code>, <code>D:\MADEIRAS_2\BASS_CLARINET</code>.
   Analysis companion: <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>.
+  Historical research workbooks were not regenerated.
 </footer>
 </main>
 </body>

@@ -13,6 +13,10 @@ from .notes import midi_to_label, parse_pitch
 from .session import Cell, Layer, layer_from_identity
 
 
+class InsufficientFillData(ValueError):
+    """Fill method rejected because the layer has too few known points."""
+
+
 @dataclass
 class Anchor:
     midi: int
@@ -249,18 +253,24 @@ def fill_missing(
     grid_lo = max(layer.range_low, lo - max_extrap_semitones)
     grid_hi = min(layer.range_high, hi + max_extrap_semitones)
 
-    if method == "pchip" and len(known) >= 3:
+    if method == "pchip":
+        if len(known) < 3:
+            raise InsufficientFillData(
+                f"PCHIP fill needs at least 3 known values; this layer has {len(known)}. "
+                "Choose linear fill for two points, or add another measured note. "
+                "No other method is substituted automatically."
+            )
         fn = PchipInterpolator(xs, ys, extrapolate=True)
 
         def predict(m: int) -> float:
             return float(fn(m))
 
-        extra_origin = "extrapolated_ridge"
+        extra_origin = "extrapolated_pchip"
     elif method == "linear":
         def predict(m: int) -> float:
             return float(np.interp(m, xs, ys))
 
-        extra_origin = origin_interpolated
+        extra_origin = "extrapolated_hold"
     elif method == "polynomial":
         deg = max(1, min(poly_degree, len(known) - 1))
         coef = np.polyfit(xs, ys, deg)

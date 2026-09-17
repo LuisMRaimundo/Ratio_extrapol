@@ -36,6 +36,28 @@ QA_REJECTED = "REJECTED"
 
 L_CLIP = 3.0
 DEFAULT_REL_EPS = 1e-12
+WEIGHT_TOL = 1e-12
+SUPPORTED_COMBINATION_METHODS = ("empirical_only", "equal_weight", "legacy_equal_weight")
+UNSUPPORTED_COMBINATION_METHODS = {
+    "fixed_weight": (
+        "fixed_weight has no implemented specification. "
+        "Use empirical_only, equal_weight, or legacy_equal_weight."
+    ),
+    "validation_optimised": (
+        "validation_optimised is not connected to a production optimisation workflow. "
+        "optimal_weight() is a research helper only. "
+        "Use empirical_only, equal_weight, or legacy_equal_weight."
+    ),
+    "validation_optimized": (
+        "validation_optimised is not connected to a production optimisation workflow. "
+        "optimal_weight() is a research helper only. "
+        "Use empirical_only, equal_weight, or legacy_equal_weight."
+    ),
+}
+
+
+class ConfigurationError(ValueError):
+    """Unsupported combination mode or inconsistent weights."""
 COLLECTION_CODEC = {
     "IOWA": "WAV / studio research compile",
     "ORCH": "Orchidea source (sibling instrument); not a target-instrument recording",
@@ -50,6 +72,8 @@ ORIGIN_TO_PROVENANCE = {
     "family_transfer": PROVENANCE_TRANSFERRED,
     "orchidea_family_transfer_estimate": PROVENANCE_TRANSFERRED,
     "extrapolated_ridge": PROVENANCE_EXTRAPOLATED,
+    "extrapolated_pchip": PROVENANCE_EXTRAPOLATED,
+    "extrapolated_hold": PROVENANCE_EXTRAPOLATED,
     "extrapolated_polynomial": PROVENANCE_EXTRAPOLATED,
     "combined_estimate": PROVENANCE_COMBINED_ESTIMATE,
     "generated": PROVENANCE_COMBINED_ESTIMATE,
@@ -107,6 +131,40 @@ def load_config(path: Optional[Path] = None) -> CalibrationConfig:
     cfg.allow_long_extrapolation = bool(extra.get("allow_long_extrapolation", cfg.allow_long_extrapolation))
     cfg.allow_review_required = bool(extra.get("allow_review_required", cfg.allow_review_required))
     cfg.relative_epsilon = float(disagree.get("relative_epsilon", cfg.relative_epsilon))
+    validate_combination_config(cfg)
+    return cfg
+
+
+def normalize_combination_method(name: str) -> str:
+    method = (name or "empirical_only").strip().lower()
+    if method in SUPPORTED_COMBINATION_METHODS:
+        return method
+    if method in UNSUPPORTED_COMBINATION_METHODS:
+        raise ConfigurationError(UNSUPPORTED_COMBINATION_METHODS[method])
+    raise ConfigurationError(
+        f"Unknown combination method {name!r}. "
+        f"Supported: {', '.join(SUPPORTED_COMBINATION_METHODS)}."
+    )
+
+
+def validate_combination_config(cfg: CalibrationConfig) -> CalibrationConfig:
+    cfg.combination_method = normalize_combination_method(cfg.combination_method)
+    for label, raw in (("empirical_weight", cfg.empirical_weight), ("transfer_weight", cfg.transfer_weight)):
+        try:
+            val = float(raw)
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(f"{label} must be a finite number in [0, 1].") from exc
+        if not math.isfinite(val) or val < 0.0 or val > 1.0:
+            raise ConfigurationError(f"{label}={raw!r} must be finite and in [0, 1].")
+    expected_t = 1.0 - float(cfg.empirical_weight)
+    if abs(float(cfg.transfer_weight) - expected_t) > WEIGHT_TOL:
+        raise ConfigurationError(
+            f"transfer_weight ({cfg.transfer_weight}) must equal "
+            f"1 - empirical_weight ({cfg.empirical_weight}) = {expected_t}. "
+            "The authoritative legacy rule is w_T = 1 - w_E."
+        )
+    cfg.empirical_weight = float(cfg.empirical_weight)
+    cfg.transfer_weight = expected_t
     return cfg
 
 
@@ -310,10 +368,15 @@ def combine_empirical_and_modelled(
 ) -> tuple[Optional[float], str, float, float]:
     """Return (value, method, w_E, w_T).
 
-    A target measurement always wins unless method is legacy_equal_weight.
+    empirical_only: a valid target empirical value always wins.
+    equal_weight / legacy_equal_weight: arithmetic mix when both exist.
+    Effective transfer weight is always 1 - w_E.
     """
-    method = (cfg.combination_method or "empirical_only").strip().lower()
-    w_e = cfg.empirical_weight if empirical_weight is None else empirical_weight
+    validate_combination_config(cfg)
+    method = cfg.combination_method
+    w_e = cfg.empirical_weight if empirical_weight is None else float(empirical_weight)
+    if not math.isfinite(w_e) or w_e < 0.0 or w_e > 1.0:
+        raise ConfigurationError(f"empirical_weight={w_e!r} must be finite and in [0, 1].")
     w_t = 1.0 - w_e
     has_e = empirical is not None and empirical > 0 and math.isfinite(empirical)
     has_t = transfer is not None and transfer > 0 and math.isfinite(transfer)
@@ -749,7 +812,16 @@ def build_final_rows(
         dist = extrapolation_distance_semitones(midi, lo, hi)
         outside = dist > 0
         final, method, we, wt = combine_empirical_and_modelled(e, t, cfg, empirical_weight=weight_e)
-        if e is not None:
+        blended = (
+            e is not None
+            and t is not None
+            and method in {"equal_weight", "legacy_equal_weight"}
+            and 0.0 < we < 1.0
+            and 0.0 < wt < 1.0
+        )
+        if blended:
+            prov = PROVENANCE_COMBINED_ESTIMATE
+        elif e is not None:
             prov = PROVENANCE_MEASURED
         elif t is not None and transfer_method == "legacy_target_calibrated":
             prov = PROVENANCE_COMBINED_ESTIMATE
@@ -804,6 +876,9 @@ def build_final_rows(
                 "validation_status": validation_status_of(status, accepted_final=include),
                 "source_pitch_min": lo,
                 "source_pitch_max": hi,
+                "configured_combination_method": cfg.combination_method,
+                "configured_empirical_weight": cfg.empirical_weight,
+                "configured_transfer_weight": cfg.transfer_weight,
             }
         )
     return rows

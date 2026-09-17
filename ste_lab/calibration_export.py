@@ -283,6 +283,9 @@ def write_final_calibration(ws: Worksheet, rows: list[dict]) -> None:
         "Validation_Status",
         "Absolute_Difference",
         "Relative_Difference",
+        "Configured_Combination_Method",
+        "Configured_Empirical_Weight",
+        "Configured_Transfer_Weight",
     ]
     _header(ws, headers)
     for rec in rows:
@@ -315,6 +318,9 @@ def write_final_calibration(ws: Worksheet, rows: list[dict]) -> None:
                 rec.get("validation_status"),
                 rec.get("absolute_difference"),
                 rec.get("relative_difference"),
+                rec.get("configured_combination_method"),
+                rec.get("configured_empirical_weight"),
+                rec.get("configured_transfer_weight"),
             ]
         )
     _autosize(ws)
@@ -356,13 +362,25 @@ def write_methodology(
         ("Transfer weight", cfg.transfer_weight),
         (
             "Default combination rule",
-            "A genuine target-instrument measurement is never replaced by a transfer estimate "
-            "(empirical_only). Weighting applies only where no target measurement exists. "
-            "legacy_equal_weight reproduces the pre-1.3 Media average. "
-            "The Media sheet is the resolved empirical-priority calibration curve, "
-            "not generally (IOWA + ORCH) / 2.",
+            "Supported methods: empirical_only, equal_weight, legacy_equal_weight. "
+            "empirical_only never replaces a valid target measurement; transfer fills only a gap. "
+            "equal_weight mixes 0.5/0.5 when both exist. "
+            "legacy_equal_weight mixes with w_T = 1 - w_E. "
+            "fixed_weight and validation_optimised are rejected until specified. "
+            "Per-row Empirical_Weight / Transfer_Weight are the effective weights; "
+            "Configured_* columns are the yaml defaults. "
+            "A blended output is COMBINED_ESTIMATE, not MEASURED.",
         ),
-        ("Interpolation", "Interior of a measured span only (PCHIP / linear in fill_missing). Not used in the two-ratio transfer."),
+        (
+            "Interpolation / Fill",
+            "fill_missing interpolates inside the measured MIDI span and may continue "
+            "outside that span up to max_extrap_semitones (default 12). "
+            "PCHIP requires ≥3 known points and labels exterior cells extrapolated_pchip "
+            "(not ridge regression). Linear holds endpoints outside the span and labels "
+            "those cells extrapolated_hold, not interpolated. "
+            "Technique-transfer L still holds the edge L; that is a different operator. "
+            "Fill is not used in the two-ratio transfer.",
+        ),
         (
             "Two-ratio transfer",
             "L_coll(midi) = ln(ORCH_clarinet / IOWA_clarinet); "

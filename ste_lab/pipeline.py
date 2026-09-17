@@ -91,7 +91,7 @@ def run_string_pipeline(
     """Bowed-string workflow: dedicated effect discovery + one STE/Zenodo pair per effect.
 
     String Media still averages IOWA/ORCH peers (historical rule). Woodwind
-    `empirical_only` / `prefer_measured` is not applied to effect books.
+    combination (`empirical_only` by default) is not applied to string effect books.
     Dedicated deposit CLIs (`run_ste_effects_batch_*.py`) remain available
     and are not deleted.
     """
