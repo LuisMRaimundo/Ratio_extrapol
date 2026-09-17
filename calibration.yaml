@@ -29,3 +29,10 @@ extrapolation:
 
 disagreement:
   relative_epsilon: 1.0e-12
+
+# Optional pooled log-ratio field. `single` is today's production field
+# (bit-for-bit). `pooled` averages per-collection L at overlapping MIDI.
+transfer_field:
+  mode: single          # single | pooled
+  weight: anchors       # anchors | equal
+  min_collections: 2

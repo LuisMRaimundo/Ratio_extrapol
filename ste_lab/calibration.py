@@ -96,6 +96,9 @@ class CalibrationConfig:
     allow_review_required: bool = False
     relative_epsilon: float = DEFAULT_REL_EPS
     seed: int = 0
+    transfer_field_mode: str = "single"
+    transfer_field_weight: str = "anchors"
+    transfer_field_min_collections: int = 2
 
     def as_export_rows(self) -> list[tuple[str, object]]:
         return [(k, v) for k, v in asdict(self).items()]
@@ -131,6 +134,20 @@ def load_config(path: Optional[Path] = None) -> CalibrationConfig:
     cfg.allow_long_extrapolation = bool(extra.get("allow_long_extrapolation", cfg.allow_long_extrapolation))
     cfg.allow_review_required = bool(extra.get("allow_review_required", cfg.allow_review_required))
     cfg.relative_epsilon = float(disagree.get("relative_epsilon", cfg.relative_epsilon))
+    field = data.get("transfer_field") or {}
+    cfg.transfer_field_mode = str(field.get("mode", cfg.transfer_field_mode)).strip().lower()
+    cfg.transfer_field_weight = str(field.get("weight", cfg.transfer_field_weight)).strip().lower()
+    cfg.transfer_field_min_collections = int(field.get("min_collections", cfg.transfer_field_min_collections))
+    if cfg.transfer_field_mode not in {"single", "pooled"}:
+        raise ConfigurationError(
+            f"transfer_field.mode={cfg.transfer_field_mode!r} must be 'single' or 'pooled'."
+        )
+    if cfg.transfer_field_weight not in {"anchors", "equal"}:
+        raise ConfigurationError(
+            f"transfer_field.weight={cfg.transfer_field_weight!r} must be 'anchors' or 'equal'."
+        )
+    if cfg.transfer_field_min_collections < 1:
+        raise ConfigurationError("transfer_field.min_collections must be >= 1.")
     validate_combination_config(cfg)
     return cfg
 

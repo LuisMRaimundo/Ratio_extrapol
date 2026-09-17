@@ -43,6 +43,7 @@ ORIGINS = [
     "combined_estimate",
     "collection_anchored",
     "modelled",
+    "modelled_pooled",
     "manual",
 ]
 
@@ -204,6 +205,7 @@ ORIGIN_RANK = {
     "modelled_iowa_anchored": 5,
     "modelled_orchidea_anchored": 5,
     "modelled": 5,
+    "modelled_pooled": 5,
     "generated": 6,
     "extrapolated_ridge": 7,
     "extrapolated_pchip": 7,
@@ -243,6 +245,8 @@ def normalize_origin(raw: str) -> str:
         return s
     if low in aliases:
         return aliases[low]
+    if low.endswith("_pooled") and low.startswith("modelled_"):
+        return s
     for item in ORIGINS:
         if item.lower() == low:
             return item
@@ -265,4 +269,5 @@ GENERATED_ORIGINS = {
     "modelled_iowa_anchored",
     "modelled_orchidea_anchored",
     "modelled_on_extrapolated_anchor",
+    "modelled_pooled",
 }

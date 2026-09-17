@@ -23,7 +23,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from run_ste_effects_batch import build_layer, transfer_or_copy
-from ste_lab.catalog import orchestral_group, resolve_instrument
+from ste_lab.calibration import load_config
+from ste_lab.catalog import family_donor_instrument, orchestral_group, resolve_instrument
 
 STRING_ONLY_EFFECTS = frozenset(
     {"sul ponticello", "con sordino", "sul tasto", "harmonics"}
@@ -34,7 +35,22 @@ from ste_lab.notes import parse_pitch
 from ste_lab.qa import audit_project
 from ste_lab.session import Project
 from ste_lab.media_policy import production_media_of
+from ste_lab.relation_export import (
+    apply_pi95_for_instrument,
+    apply_pi95_for_technique,
+    attach_project_validation,
+    contributor_log_lines,
+    write_validation_csv,
+)
+from ste_lab.relations import (
+    field_for_transfer,
+    pooled_origin_tag,
+    production_relations_from_effects,
+    relations_from_pack,
+    select_production_relation,
+)
 from ste_lab.transfer import Anchor
+from ste_lab.validation import compare_relations, validation_evidence_rows
 from ste_lab.zenodo_export import export_zenodo_workbook
 
 DEFAULT_PREP = Path(r"D:\CORDAS_3\VIOLA 4\Viola_STE_preparatory.xlsx")
@@ -299,6 +315,34 @@ def load_preparatory(path: Path) -> dict:
     }
 
 
+def _stamp_validation(project, pack, instr_id, technique, floor) -> tuple:
+    discovered = relations_from_pack(pack, instr_id, floor)
+    selected = select_production_relation(discovered, {"instrument": instr_id})
+    pairwise, spread = compare_relations(discovered)
+    attach_project_validation(project, pairwise=pairwise, spread=spread)
+    extras = validation_evidence_rows(discovered, technique=technique, production=selected)
+    project.extra_evidence.extend(extras)
+    if technique and technique not in {"ordinario", "arco"}:
+        apply_pi95_for_technique(
+            project,
+            instrument=instr_id,
+            technique=technique,
+            spread=spread,
+            pairwise=pairwise,
+        )
+    else:
+        donor = family_donor_instrument(instr_id)
+        if donor:
+            apply_pi95_for_instrument(
+                project,
+                instrument=instr_id,
+                source_cond=donor,
+                spread=spread,
+                pairwise=pairwise,
+            )
+    return discovered, selected, pairwise, spread
+
+
 def harm_floor(instrument: str) -> int:
     spec = resolve_instrument(instrument)
     key = spec.instrument_id if spec else (instrument or "viola").strip().lower().replace(" ", "_")
@@ -372,6 +416,12 @@ def run(
     origins = pack.get("origins") or {"IOWA": "measured", "ORCH": "measured"}
     if woodwind:
         print("  woodwind run: string techniques are not invented")
+    cfg = load_config()
+    floor = harm_floor(instrument)
+    discovered = relations_from_pack(pack, instr_id, floor)
+    select_production_relation(discovered, {"instrument": instr_id})
+    prod_rels = production_relations_from_effects(pack["effects"], instr_id)
+    pairwise_parts = []
 
     for spec in pack["effects"]:
         effect = spec["name"]
@@ -420,6 +470,49 @@ def run(
                 origins.get("ORCH", "measured"),
                 "Paste_arco", prep.name,
             )
+            prod = next(
+                (r for r in prod_rels if r.target_cond == effect and r.dynamic == dyn and r.anchors),
+                None,
+            )
+            if prod is None:
+                prod = next(
+                    (r for r in prod_rels if r.target_cond == effect and r.dynamic == "mf" and r.anchors),
+                    None,
+                )
+            peers = [
+                r
+                for r in discovered
+                if r.kind == "technique" and r.target_cond == effect and r.dynamic == (prod.dynamic if prod else dyn)
+            ]
+            midis = sorted(set(iowa_arco.cells) | set(orch_arco.cells))
+            L_field, contrib, field_msgs = field_for_transfer(
+                peers or ([prod] if prod else []),
+                midis,
+                production=prod,
+                mode=cfg.transfer_field_mode,
+                weight=cfg.transfer_field_weight,
+                min_collections=cfg.transfer_field_min_collections,
+            )
+            use_field = L_field if cfg.transfer_field_mode == "pooled" and L_field else None
+            pooled_tag = pooled_origin_tag(c[0] for hits in contrib.values() for c in hits)
+            field_note = ""
+            if use_field is not None:
+                field_note = (
+                    f"pooled L from {', '.join(sorted({c[0] for hits in contrib.values() for c in hits}))}"
+                    f" weight={cfg.transfer_field_weight}"
+                )
+            for msg in field_msgs:
+                project.log.append(msg)
+            project.log.extend(
+                contributor_log_lines(
+                    technique=effect,
+                    dynamic=dyn,
+                    contributors=contrib,
+                    mode=cfg.transfer_field_mode,
+                )
+            )
+            if use_field is not None:
+                project.pooled_provenance = field_note
 
             if recorded[dyn]:
                 orch_eff = orchidea_recorded_layer(
@@ -434,9 +527,11 @@ def run(
                     dyn_anchors,
                     effect,
                     "ORCH",
-                    "modelled_ORCHIDEA_anchored",
+                    pooled_tag if use_field is not None else "modelled_ORCHIDEA_anchored",
                     copy_anchors=False,
                     min_midi=min_midi,
+                    log_ratio_field=use_field,
+                    field_comment=field_note,
                 )
                 if transferred:
                     stamp_evidence(
@@ -452,9 +547,11 @@ def run(
                     dyn_anchors,
                     effect,
                     "IOWA",
-                    "modelled_IOWA_anchored",
+                    pooled_tag if use_field is not None else "modelled_IOWA_anchored",
                     copy_anchors=False,
                     min_midi=min_midi,
+                    log_ratio_field=use_field,
+                    field_comment=field_note,
                 )
                 if iowa_eff:
                     if prediction:
@@ -504,6 +601,9 @@ def run(
                 project.add_layer(media)
                 media_layers.append(media)
 
+        _disc, _sel, pairwise, _spread = _stamp_validation(project, pack, instr_id, effect, floor)
+        if pairwise is not None and not pairwise.empty:
+            pairwise_parts.append(pairwise)
         flags = audit_project(project)
         slug = effect.replace(" ", "_")
         ste = out / f"{instr_file}_STE_{slug}_IOWA_ORCH.xlsx"
@@ -517,12 +617,18 @@ def run(
     written.extend(
         _export_ordinario_spine(
             pack, out, instr_id, instr_file, arco, op, extra, prep,
+            pairwise_parts=pairwise_parts,
         )
     )
+    csv_pairs = pairwise_parts
+    if csv_pairs:
+        write_validation_csv(out / f"{instr_id}_L_validation.csv", pd.concat(csv_pairs, ignore_index=True))
+    else:
+        write_validation_csv(out / f"{instr_id}_L_validation.csv", pd.DataFrame())
     return written
 
 
-def _export_ordinario_spine(pack, out, instr_id, instr_file, arco, op, extra, prep) -> list[Path]:
+def _export_ordinario_spine(pack, out, instr_id, instr_file, arco, op, extra, prep, pairwise_parts=None) -> list[Path]:
     """Always write the ordinario book. Woodwinds often have no string effects."""
     woodwind = orchestral_group(instr_id) == "woodwinds"
     project = Project(
@@ -585,6 +691,11 @@ def _export_ordinario_spine(pack, out, instr_id, instr_file, arco, op, extra, pr
             )
             project.add_layer(media)
             media_layers.append(media)
+    _disc, _sel, pairwise, _spread = _stamp_validation(
+        project, pack, instr_id, "ordinario", harm_floor(instr_id)
+    )
+    if pairwise_parts is not None and pairwise is not None and not pairwise.empty:
+        pairwise_parts.append(pairwise)
     flags = audit_project(project)
     ste = out / f"{instr_file}_STE_ordinario_IOWA_ORCH.xlsx"
     zen = out / f"{instr_file}_Zenodo_collections_ordinario.xlsx"

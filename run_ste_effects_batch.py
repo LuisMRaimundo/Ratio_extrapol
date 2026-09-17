@@ -432,11 +432,21 @@ def transfer_or_copy(
     origin_fallback="technique_transfer",
     copy_anchors: bool = True,
     min_midi: int | None = None,
+    log_ratio_field=None,
+    field_comment: str = "",
 ):
     if len(anchors) < 1:
         return None
     result = technique_transfer(
-        source_layer, anchors, technique, "log_ratio", collection, copy_anchors=copy_anchors
+        source_layer,
+        anchors,
+        technique,
+        "log_ratio",
+        collection,
+        copy_anchors=copy_anchors,
+        log_ratio_field=log_ratio_field,
+        origin_override=origin_fallback if log_ratio_field is not None else None,
+        field_comment=field_comment,
     )
     drop = []
     for midi, cell in result.layer.cells.items():

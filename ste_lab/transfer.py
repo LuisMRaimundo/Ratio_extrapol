@@ -87,6 +87,9 @@ def technique_transfer(
     method: str = "log_ratio",
     collection: Optional[str] = None,
     copy_anchors: bool = True,
+    log_ratio_field: Optional[dict[int, float]] = None,
+    origin_override: Optional[str] = None,
+    field_comment: str = "",
 ) -> TransferResult:
     """
     Map a source-technique curve onto a target technique.
@@ -108,7 +111,7 @@ def technique_transfer(
 
     result = TransferResult(layer=target)
     if method == "log_ratio":
-        L = _interp_log_ratio(anchors, list(source.cells))
+        L = log_ratio_field if log_ratio_field is not None else _interp_log_ratio(anchors, list(source.cells))
         for midi, cell in source.cells.items():
             if midi not in L:
                 continue
@@ -116,8 +119,10 @@ def technique_transfer(
             value = cell.value * ratio
             if not np.isfinite(value) or value <= 0:
                 continue
-            origin = "technique_transfer"
+            origin = origin_override or "technique_transfer"
             comment = f"from {source.technique}"
+            if field_comment:
+                comment += f"; {field_comment}"
             anchor_midis = [a.midi for a in anchors]
             for a in anchors:
                 if a.midi == midi and copy_anchors:
