@@ -28,7 +28,7 @@ from run_ste_effects_batch import (
     load_arco_media,
     transfer_or_copy,
 )
-from build_ste_preparatory import find_research_trees, find_zenodo_arco
+from build_ste_preparatory import collect_compiled_specs, find_research_trees, find_zenodo_arco
 from run_ste_from_preparatory import (
     HARM_LO,
     _instrument_names,
@@ -619,6 +619,41 @@ class TestRebuildFolderHunt(unittest.TestCase):
             self.assertIn(("MCGILL", "", "McGill_cello"), labels)
             self.assertFalse(any("tasto" in path.name.lower() or tech == "sul tasto" for path, _, tech in trees))
             self.assertFalse(any(coll == "IOWA" or "iowa" in path.name.lower() for path, coll, _ in trees))
+
+    def test_phil_nested_tasto_is_not_ordinario(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            phil = root / "Philharmonia_violin"
+            normal = (
+                phil / "arco-normal" / "piano" / "_Sustains_Stable" / "spectral_analyser"
+            )
+            tasto = (
+                phil / "arco-sul-tasto" / "piano" / "_Sustains_Stable" / "spectral_analyser"
+            )
+            normal.mkdir(parents=True)
+            tasto.mkdir(parents=True)
+            (normal / "Philharmonia_violin_piano_arco-normal_compiled_density_metrics_research.xlsx").write_bytes(b"PK")
+            (tasto / "Philharmonia_violin_piano_arco-sul-tasto_compiled_density_metrics_research.xlsx").write_bytes(b"PK")
+            trees = find_research_trees(root, "violin")
+            specs, _ = collect_compiled_specs(trees)
+            self.assertFalse(any("tasto" in str(s["path"]).lower() for s in specs))
+            self.assertFalse(any(s.get("technique") == "sul tasto" for s in specs))
+            phil_ord_p = [
+                s
+                for s in specs
+                if s["collection"] == "PHIL" and s["technique"] == "ordinario" and s["dynamic"] == "p"
+            ]
+            self.assertEqual(len(phil_ord_p), 1)
+            self.assertIn("arco-normal", str(phil_ord_p[0]["path"]))
+
+    def test_forced_ordinario_cannot_relabel_tasto(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tree = Path(tmp) / "Philharmonia_violin"
+            tasto = tree / "arco-sul-tasto" / "piano" / "_Sustains_Stable" / "spectral_analyser"
+            tasto.mkdir(parents=True)
+            (tasto / "Philharmonia_violin_piano_arco-sul-tasto_compiled_density_metrics_research.xlsx").write_bytes(b"PK")
+            specs, _ = collect_compiled_specs([(tree, "PHIL", "ordinario")])
+            self.assertEqual(specs, [])
 
     def test_harm_floor_by_instrument(self):
         self.assertEqual(harm_floor("viola"), 72)

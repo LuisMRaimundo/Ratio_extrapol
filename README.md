@@ -2,7 +2,7 @@
 
 Local folder: `Ratio_Extrapol`. GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol).
 
-Python package `ste_lab` (v1.5.0) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
+Python package `ste_lab` (v1.5.1) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
 
 This repository estimates Combined Density Metric (F-061 / `spectral_mass`) curves across technique, collection, and missing notes. It does **not** compute F-061 from audio. Engineering consistency of exports is not a claim of acoustic validity.
 
@@ -32,6 +32,10 @@ The same resolver writes in-memory Media, Zenodo Media, AcousticTable, and Final
 - Polynomial: origin `extrapolated_polynomial`.
 
 Technique transfer still holds edge \(L\). That operator was not changed to match Fill.
+
+## Discovery (v1.5.1)
+
+`collect_compiled_specs` never invents sul tasto. Any compiled research book whose path contains `tasto` is excluded **before** technique assignment and **before** the PHIL/MCGILL “no technique → ordinario” fallback. Skipping only a top-level folder named `sul-tasto` is not enough: a nested Philharmonia `arco-sul-tasto` tree must not be ingested as `ordinario`. Those source workbooks are left untouched; rebuild the generated preparatory / STE books.
 
 ## Transfer relations (v1.5.0)
 

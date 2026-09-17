@@ -317,8 +317,13 @@ def find_family_donor_trees(root: Path, instrument: str | None) -> list[tuple[Pa
     return trees
 
 
+def _path_is_tasto(parts: list[str]) -> bool:
+    """Sul tasto is never ingested. Nested PHIL folders must not reach the ordinario fallback."""
+    return any("tasto" in p for p in parts)
+
+
 def _tech_from_parts(parts: list[str]) -> str | None:
-    if any("tasto" in p for p in parts):
+    if _path_is_tasto(parts):
         return None
     if any(p in {"con-sord", "con-sordino", "muted"} or "con-sord" in p for p in parts):
         return "con sordino"
@@ -342,6 +347,8 @@ def collect_compiled_specs(trees: list[tuple[Path, str, str | None]]) -> tuple[l
             if path.name.startswith("~$"):
                 continue
             parts = [p.lower() for p in path.parts]
+            if _path_is_tasto(parts):
+                continue
             tech = forced_tech or _tech_from_parts(parts)
             if tech == "sul tasto":
                 continue
