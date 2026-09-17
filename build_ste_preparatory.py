@@ -752,6 +752,98 @@ def write_woodwind_media(
                     est.notes,
                 ]
             )
+    from ste_lab.relation_export import attach_relation_sheets
+    from ste_lab.relations import (
+        catalog_for_discovery,
+        discover_relations,
+        field_for_transfer,
+        select_production_relation,
+    )
+    from ste_lab.validation import compare_relations, summary_validation_lines
+
+    catalog = catalog_for_discovery(
+        instrument=instrument,
+        donor_measured=donor_measured,
+        donor_instrument=family_donor_instrument(instrument),
+    )
+    ww_relations = discover_relations(measured, catalog)
+    select_production_relation(
+        ww_relations,
+        {
+            "instrument": instrument,
+            "family": "woodwinds",
+            "donor_instrument": family_donor_instrument(instrument),
+        },
+    )
+    if cfg.transfer_field_mode == "pooled":
+        for dyn in CORE:
+            est = estimates.get(dyn)
+            if est is None:
+                continue
+            midis = sorted(set(est.curve) | set(est.L_instr) | set(est.L_coll))
+            instr_peers = [r for r in ww_relations if r.kind == "instrument" and r.dynamic == dyn]
+            prod_i = next((r for r in instr_peers if r.used_in_production), None)
+            L_instr, contrib_i, msgs_i = field_for_transfer(
+                instr_peers,
+                midis,
+                production=prod_i,
+                mode="pooled",
+                weight=cfg.transfer_field_weight,
+                min_collections=cfg.transfer_field_min_collections,
+            )
+            coll_peers = [
+                r
+                for r in ww_relations
+                if r.kind == "collection"
+                and r.dynamic == dyn
+                and r.source_cond == "IOWA"
+                and r.target_cond == "ORCH"
+            ]
+            prod_c = next((r for r in coll_peers if r.used_in_production), None)
+            L_coll, _contrib_c, msgs_c = field_for_transfer(
+                coll_peers,
+                midis,
+                production=prod_c,
+                mode="pooled",
+                weight=cfg.transfer_field_weight,
+                min_collections=cfg.transfer_field_min_collections,
+            )
+            donor = orch_donor[dyn] or orch_donor.get("mf") or {}
+            if L_instr:
+                orch[dyn] = apply_log_ratio(donor, L_instr, midis) if donor else est.curve
+                est.curve = orch[dyn]
+                est.L_instr = L_instr
+            if L_coll:
+                est.L_coll = L_coll
+            extra = "; ".join(msgs_i + msgs_c)
+            if extra:
+                est.notes = (est.notes or "") + " " + extra
+            if iowa_origin != "measured" and L_instr:
+                sibling = iowa_sib[dyn] or iowa_sib.get("mf") or {}
+                iowa[dyn] = apply_log_ratio(sibling, L_instr, midis) if sibling else iowa[dyn]
+        write_woodwind_media.last_estimates = estimates  # type: ignore[attr-defined]
+        remember_transfer_estimates(estimates)
+        midis = sorted(set().union(*iowa.values(), *orch.values()))
+        # rewrite the media sheet values after pooling
+        if "Note" in [c.value for c in ws[1]]:
+            for row in ws.iter_rows(min_row=2):
+                ws.delete_rows(2)
+            for midi in midis:
+                row = [midi_to_label(midi)]
+                for coll, curves in (("IOWA", iowa), ("ORCH", orch)):
+                    for dyn in CORE:
+                        row.append(curves[dyn].get(midi))
+                ws.append(row)
+    pairwise, spread = compare_relations(ww_relations)
+    attach_relation_sheets(
+        wb,
+        pairwise=pairwise,
+        spread=spread,
+        summary_lines=summary_validation_lines(pairwise),
+    )
+    write_woodwind_media.last_relations = ww_relations  # type: ignore[attr-defined]
+    write_woodwind_media.last_pairwise = pairwise  # type: ignore[attr-defined]
+    write_woodwind_media.last_spread = spread  # type: ignore[attr-defined]
     wb.save(path)
     write_woodwind_media.last_origins = {  # type: ignore[attr-defined]
         "IOWA": iowa_origin,
@@ -911,24 +1003,60 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
     phil_ord = {d: _as_map(_get(measured, "PHIL", "ordinario", d)) for d in (*CORE, "p", "mp", "f")}
     mcgill_ord = {d: _as_map(_get(measured, "MCGILL", "ordinario", d)) for d in (*CORE, "p", "mp", "f")}
 
-    frames = []
-    for (tech, dyn), curve in sorted(recorded.items()):
-        teacher = orch_arco.get(dyn) or {}
-        min_m = floor if tech == "harmonics" else None
-        frames.append(
-            _anchors(teacher, curve, effect_name=tech, grade="Empirical_ORCH", min_midi=min_m, dynamic=dyn)
+    from ste_lab.relations import (
+        catalog_for_discovery,
+        discover_relations,
+        inventory_dataframe,
+        relation_anchor_frame,
+        select_production_relation,
+    )
+
+    catalog = catalog_for_discovery(
+        instrument=instr_id,
+        arco={"IOWA": iowa_arco, "ORCH": orch_arco},
+        donor_measured=donor_measured,
+        donor_instrument=family_donor_instrument(instr_id),
+        harm_floor=floor,
+    )
+    relations = discover_relations(measured, catalog)
+    selected = select_production_relation(
+        relations,
+        {
+            "instrument": instr_id,
+            "family": "woodwinds" if woodwind else orchestral_group(instr_id),
+            "donor_instrument": family_donor_instrument(instr_id),
+        },
+    )
+    # Production Anchors_all is the selected technique relations (today's ORCH
+    # teacher, plus McGill sordino when ORCH has none). Same skip rules.
+    frames = [
+        relation_anchor_frame(
+            rel,
+            target_payloads=_get(measured, rel.collection, rel.target_cond, rel.dynamic)
+            or (_get(measured, "MCGILL", rel.target_cond, rel.dynamic) if rel.collection == "MCGILL" else {}),
         )
-    if (
-        not woodwind
-        and not any(tech == "con sordino" for tech, _dyn in recorded)
-        and mcgill_sord
-        and mcgill_arco
-    ):
-        frames.append(
-            _anchors(mcgill_arco, mcgill_sord, effect_name="con sordino", grade="prediction_McGill", dynamic="mf")
-        )
+        for rel in selected
+        if rel.kind == "technique"
+    ]
+    if not frames:
+        for (tech, dyn), curve in sorted(recorded.items()):
+            teacher = orch_arco.get(dyn) or {}
+            min_m = floor if tech == "harmonics" else None
+            frames.append(
+                _anchors(teacher, curve, effect_name=tech, grade="Empirical_ORCH", min_midi=min_m, dynamic=dyn)
+            )
+        if (
+            not woodwind
+            and not any(tech == "con sordino" for tech, _dyn in recorded)
+            and mcgill_sord
+            and mcgill_arco
+        ):
+            frames.append(
+                _anchors(mcgill_arco, mcgill_sord, effect_name="con sordino", grade="prediction_McGill", dynamic="mf")
+            )
     frames = [df for df in frames if df is not None and not df.empty]
     anchors = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    relations_inventory = inventory_dataframe(relations)
 
     midi_pool = set(mcgill_sord) | set(mcgill_arco) | set(phil_harm) | set(mcgill_harm)
     for dyn in CORE:
@@ -1077,6 +1205,7 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
             else "every Orchidea recording (effect × dynamic) as its own column."
         ),
         "• Anchors_all — filter by effect, copy STE_Lab_paste into Tab 3.",
+        "• Relations_inventory — every transfer relation found in the trees (used_in_production = today's teacher).",
         "• Measured_inventory / Measured_long — provenance.",
         "",
         "Orchidea rule",
@@ -1175,6 +1304,11 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
         "Anchors_all",
         anchors,
         "Tab 3: filter effect, copy STE_Lab_paste. Sul tasto is never written.",
+    )
+    put(
+        "Relations_inventory",
+        relations_inventory,
+        "Every transfer relation the trees can teach. used_in_production marks the teacher chosen by select_production_relation.",
     )
     put("Measured_inventory", inventory, "Merged compiled files per collection × technique × dynamic (union, not longest-file-wins).")
     put("Measured_long", measured_long, f"Every measured spectral_mass cell in the compiled trees under {root}.")
