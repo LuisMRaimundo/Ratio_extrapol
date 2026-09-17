@@ -22,7 +22,8 @@ from .transfer import Anchor, _interp_log_ratio, _safe_log_ratio
 ORDINARIO_ALIASES = frozenset({"ordinario", "arco"})
 PRODUCTION_DYNAMICS = frozenset({"pp", "mf", "ff"})
 DYNAMIC_ORDER = ("pp", "p", "mp", "mf", "f", "ff", "fff")
-L_INVARIANCE_HOLD = 0.40
+L_INVARIANCE_HOLD = 0.40  # heuristic on max note-wise |ΔL|, not a validated test
+COLL_PRIORITY = {"ORCH": 0, "PHIL": 1, "MCGILL": 2}
 
 INVENTORY_COLUMNS = [
     "kind",
@@ -140,24 +141,43 @@ def dynamic_rank(dynamic: str) -> Optional[int]:
         return None
 
 
+def collection_from_grade(grade: str) -> Optional[str]:
+    """Map evidence_grade to a collection only when the token is unambiguous."""
+    g = (grade or "").strip().lower()
+    if not g:
+        return None
+    if g.startswith("empirical") or "orch" in g:
+        return "ORCH"
+    if "phil" in g:
+        return "PHIL"
+    if "mcgill" in g:
+        return "MCGILL"
+    return None
+
+
 def closest_production_relation(relations: Iterable[Relation], dynamic: str) -> Optional[Relation]:
-    """Exact dynamic if present; else nearest on DYNAMIC_ORDER (more anchors, then ORCH/PHIL/McGill)."""
+    """Exact dynamic if present; else nearest on DYNAMIC_ORDER.
+
+    Tie-break: more anchors, then ORCH > PHIL > McGill > other (documented
+    collection priority). Distance is primary so a nearer leftover beats a
+    farther CORE teacher.
+    """
     cands = [rel for rel in relations if rel.anchors]
     if not cands:
         return None
     want = (dynamic or "").strip().lower()
     exact = [rel for rel in cands if (rel.dynamic or "").strip().lower() == want]
-    if exact:
-        return max(exact, key=lambda rel: rel.n_anchors)
     target = dynamic_rank(dynamic)
-    coll_rank = {"ORCH": 0, "PHIL": 1, "MCGILL": 2}
 
     def _key(rel: Relation) -> tuple:
         rank = dynamic_rank(rel.dynamic)
-        dist = 99 if target is None or rank is None else abs(rank - target)
-        return (dist, -rel.n_anchors, coll_rank.get(_norm_coll(rel.collection), 3))
+        dist = 0 if (rel.dynamic or "").strip().lower() == want else (
+            99 if target is None or rank is None else abs(rank - target)
+        )
+        return (dist, -rel.n_anchors, COLL_PRIORITY.get(_norm_coll(rel.collection), 3), rel.collection or "")
 
-    return min(cands, key=_key)
+    pool = exact or cands
+    return min(pool, key=_key)
 
 
 def mean_anchor_L(rel: Relation) -> Optional[float]:
@@ -167,21 +187,131 @@ def mean_anchor_L(rel: Relation) -> Optional[float]:
     return sum(vals) / len(vals)
 
 
-def l_invariance_status(relations: Iterable[Relation]) -> tuple[str, Optional[float]]:
-    """held | wide | untested, plus max−min mean L across teacher dynamics (nats)."""
-    means: list[float] = []
-    dyns: set[str] = set()
-    for rel in relations:
-        mid = mean_anchor_L(rel)
-        if mid is None:
+@dataclass
+class InvarianceReport:
+    """Note-wise L comparison on shared MIDI inside one collection.
+
+    ``heuristic`` applies L_INVARIANCE_HOLD (0.40 nats) to max |ΔL(m)|.
+    That cutoff is a reporting heuristic, not a validated invariance test.
+    """
+
+    status: str
+    heuristic: str
+    n_shared: int
+    collection: str
+    dynamics: tuple[str, ...]
+    pair: str
+    mean_abs_delta: Optional[float]
+    max_abs_delta: Optional[float]
+    mean_L_spread: Optional[float]
+
+    def as_labels(self) -> dict[str, str]:
+        def _fmt(val: Optional[float]) -> str:
+            return "" if val is None else f"{float(val):.4f}"
+
+        return {
+            "l_invariance": self.status,
+            "l_invariance_heuristic": self.heuristic,
+            "l_invariance_n_shared": str(self.n_shared) if self.n_shared else "",
+            "l_invariance_mean_abs": _fmt(self.mean_abs_delta),
+            "l_invariance_max_abs": _fmt(self.max_abs_delta),
+            "l_mean_L_spread": _fmt(self.mean_L_spread),
+            "l_invariance_pair": self.pair,
+            "l_invariance_collection": self.collection,
+            "l_invariance_spread": _fmt(self.mean_abs_delta),
+        }
+
+
+def _empty_invariance(status: str, *, collection: str = "", dynamics: tuple[str, ...] = ()) -> InvarianceReport:
+    return InvarianceReport(
+        status=status,
+        heuristic="n/a",
+        n_shared=0,
+        collection=collection,
+        dynamics=dynamics,
+        pair="",
+        mean_abs_delta=None,
+        max_abs_delta=None,
+        mean_L_spread=None,
+    )
+
+
+def l_invariance_status(relations: Iterable[Relation]) -> InvarianceReport:
+    """Compare L curves on shared MIDI within one collection.
+
+    Status is single_dynamic | insufficient_overlap | mixed_collection | compared.
+    Mean-L range is reported separately as mean_L_spread and is not the
+    invariance claim.
+    """
+    tech = [rel for rel in relations if rel.kind == "technique" and rel.anchors]
+    if not tech:
+        return _empty_invariance("single_dynamic")
+    by_coll: dict[str, list[Relation]] = defaultdict(list)
+    for rel in tech:
+        by_coll[_norm_coll(rel.collection) or ""].append(rel)
+    multi = []
+    for coll, rels in by_coll.items():
+        dyns = {(r.dynamic or "").strip().lower() for r in rels if (r.dynamic or "").strip()}
+        if len(dyns) >= 2 and coll:
+            multi.append((COLL_PRIORITY.get(coll, 9), coll, rels))
+    if not multi:
+        dyns = tuple(sorted({(r.dynamic or "").strip().lower() for r in tech if (r.dynamic or "").strip()}))
+        colls = {(_norm_coll(r.collection) or "") for r in tech}
+        if len(dyns) < 2:
+            return _empty_invariance("single_dynamic", collection=next(iter(colls), ""), dynamics=dyns)
+        return _empty_invariance("mixed_collection", dynamics=dyns)
+
+    _prio, collection, rels = min(multi, key=lambda item: item[0])
+    by_dyn: dict[str, dict[int, float]] = {}
+    for rel in rels:
+        dyn = (rel.dynamic or "").strip().lower()
+        curve = rel.L_at_anchors()
+        if not dyn or not curve:
             continue
-        dyns.add((rel.dynamic or "").strip().lower())
-        means.append(mid)
-    if len(dyns) < 2 or not means:
-        return "untested", None
-    spread = max(means) - min(means)
-    status = "held" if spread <= L_INVARIANCE_HOLD else "wide"
-    return status, spread
+        by_dyn.setdefault(dyn, {}).update(curve)
+    dyn_names = tuple(sorted(by_dyn, key=lambda d: dynamic_rank(d) if dynamic_rank(d) is not None else 99))
+    means = [sum(v.values()) / len(v) for v in by_dyn.values() if v]
+    mean_spread = (max(means) - min(means)) if means else None
+
+    best: Optional[InvarianceReport] = None
+    for i, d0 in enumerate(dyn_names):
+        for d1 in dyn_names[i + 1 :]:
+            shared = sorted(set(by_dyn[d0]) & set(by_dyn[d1]))
+            if not shared:
+                cand = InvarianceReport(
+                    status="insufficient_overlap",
+                    heuristic="n/a",
+                    n_shared=0,
+                    collection=collection,
+                    dynamics=(d0, d1),
+                    pair=f"{collection} {d0} vs {collection} {d1}",
+                    mean_abs_delta=None,
+                    max_abs_delta=None,
+                    mean_L_spread=mean_spread,
+                )
+            else:
+                deltas = [abs(by_dyn[d0][m] - by_dyn[d1][m]) for m in shared]
+                max_abs = max(deltas)
+                mean_abs = sum(deltas) / len(deltas)
+                cand = InvarianceReport(
+                    status="compared",
+                    heuristic="held" if max_abs <= L_INVARIANCE_HOLD else "wide",
+                    n_shared=len(shared),
+                    collection=collection,
+                    dynamics=(d0, d1),
+                    pair=f"{collection} {d0} vs {collection} {d1}",
+                    mean_abs_delta=mean_abs,
+                    max_abs_delta=max_abs,
+                    mean_L_spread=mean_spread,
+                )
+            if best is None:
+                best = cand
+                continue
+            if cand.n_shared > best.n_shared:
+                best = cand
+            elif cand.n_shared == best.n_shared and (cand.max_abs_delta or -1) > (best.max_abs_delta or -1):
+                best = cand
+    return best or _empty_invariance("insufficient_overlap", collection=collection, dynamics=dyn_names)
 
 
 def _is_tasto(technique: str) -> bool:
@@ -285,7 +415,10 @@ def relation_anchor_frame(rel: Relation, target_payloads: dict[int, Any] | None 
             {
                 "effect": rel.target_cond if rel.kind == "technique" else rel.target_cond,
                 "evidence_grade": rel.grade,
+                "collection": rel.collection,
                 "dynamic": rel.dynamic,
+                "source_cond": rel.source_cond,
+                "target_cond": rel.target_cond,
                 "note": note,
                 "midi": int(a.midi),
                 "sourceCDM": float(a.source_value),
@@ -647,20 +780,21 @@ def production_relations_from_effects(
         if not name:
             continue
         grade = str(spec.get("grade") or "")
-        if grade.lower().startswith("empirical"):
-            collection = "ORCH"
-        elif "phil" in grade.lower():
-            collection = "PHIL"
+        collection = str(spec.get("collection") or "").strip()
+        if collection:
+            collection = _norm_coll(collection) or collection
         else:
-            collection = "MCGILL"
+            collection = collection_from_grade(grade) or ""
+        source = str(spec.get("source_cond") or "ordinario").strip() or "ordinario"
+        target = name
         by_dyn = spec.get("anchors_by_dyn") or {"mf": spec.get("anchors") or []}
         for dyn, anchors in by_dyn.items():
             out.append(
                 Relation(
                     kind="technique",
                     instrument=instrument,
-                    source_cond="ordinario",
-                    target_cond=name,
+                    source_cond=source,
+                    target_cond=target,
                     collection=collection,
                     dynamic=str(dyn),
                     anchors=list(anchors or []),

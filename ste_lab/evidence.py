@@ -93,14 +93,20 @@ def stamp_evidence(
     prediction: bool = False,
     l_invariance: Optional[str] = None,
     l_invariance_spread: Optional[float] = None,
+    invariance_report=None,
 ) -> Layer:
     """Write evidence labels onto a layer after it is built."""
     if inherited_from:
         layer.labels["l_donor_dynamic"] = inherited_from
-    if l_invariance:
-        layer.labels["l_invariance"] = l_invariance
-    if l_invariance_spread is not None:
-        layer.labels["l_invariance_spread"] = f"{float(l_invariance_spread):.4f}"
+    if invariance_report is not None:
+        layer.labels.update(
+            {key: value for key, value in invariance_report.as_labels().items() if value}
+        )
+    else:
+        if l_invariance:
+            layer.labels["l_invariance"] = l_invariance
+        if l_invariance_spread is not None:
+            layer.labels["l_invariance_spread"] = f"{float(l_invariance_spread):.4f}"
     if is_context_collection(layer.collection):
         layer.labels["evidence_role"] = "context"
     elif prediction or is_prediction_technique(layer.technique):
@@ -274,6 +280,13 @@ def evidence_map_rows(project: Project, technique: str) -> list[dict]:
                 evidence_role=role,
                 l_donor_dynamic=donor_dynamic(layer) or "",
                 l_invariance=(layer.labels.get("l_invariance") or ""),
+                l_invariance_heuristic=(layer.labels.get("l_invariance_heuristic") or ""),
+                l_invariance_n_shared=(layer.labels.get("l_invariance_n_shared") or ""),
+                l_invariance_mean_abs=(layer.labels.get("l_invariance_mean_abs") or ""),
+                l_invariance_max_abs=(layer.labels.get("l_invariance_max_abs") or ""),
+                l_mean_L_spread=(layer.labels.get("l_mean_L_spread") or ""),
+                l_invariance_pair=(layer.labels.get("l_invariance_pair") or ""),
+                l_invariance_collection=(layer.labels.get("l_invariance_collection") or ""),
                 l_invariance_spread=(layer.labels.get("l_invariance_spread") or ""),
                 principal_evidence=principal,
                 note=_role_note(layer, role, n_m),

@@ -450,8 +450,12 @@ def _anchors(
     grade: str,
     min_midi: int | None = None,
     dynamic: str = "mf",
+    collection: str = "",
 ) -> pd.DataFrame:
+    from ste_lab.relations import collection_from_grade
+
     rows = []
+    coll = collection or collection_from_grade(grade) or ""
     for midi in sorted(set(arco) & set(effect)):
         if min_midi is not None and midi < min_midi:
             continue
@@ -464,7 +468,10 @@ def _anchors(
             {
                 "effect": effect_name,
                 "evidence_grade": grade,
+                "collection": coll,
                 "dynamic": dynamic,
+                "source_cond": "ordinario",
+                "target_cond": effect_name,
                 "note": note,
                 "midi": int(midi),
                 "sourceCDM": src,
@@ -1257,7 +1264,8 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
         if df is None or df.empty:
             if name == "Anchors_all":
                 headers = [
-                    "effect", "evidence_grade", "dynamic", "note", "midi",
+                    "effect", "evidence_grade", "collection", "dynamic",
+                    "source_cond", "target_cond", "note", "midi",
                     "sourceCDM", "targetCDM", "L", "STE_Lab_paste",
                 ]
             elif df is not None and list(df.columns):
@@ -1309,7 +1317,7 @@ def build(root: Path, instrument: str = "viola", out_path: Path | None = None) -
     put(
         "Anchors_all",
         anchors,
-        "Tab 3: filter effect, copy STE_Lab_paste. Production dynamics are pp/mf/ff.",
+        "Tab 3: filter effect, copy STE_Lab_paste. Production outputs stay pp/mf/ff; eligible donor dynamics are kept independently.",
     )
     put(
         "Relations_inventory",
