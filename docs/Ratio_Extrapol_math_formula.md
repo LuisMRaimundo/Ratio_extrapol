@@ -1,7 +1,7 @@
 # Ratio_extrapol — mathematical reference
 
 **Current project name:** **Ratio_extrapol** (GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol); local folder spelling `Ratio_Extrapol`).  
-**Status:** production documentation of this Ratio_extrapol **working-tree source** on branch `fix/1.5.4-donor-provenance`. Reviewed 1.5.4 baseline: `9a307705100f986258991c88d51bc7324e98e61e`. This file describes the corrected 1.5.5 implementation in the working tree; it does **not** claim that `9a30770` still matches the modified code, and it does not claim identity with GitHub `main`. Engineering corrections below restore eligible donor dynamics, per-relation provenance, and a note-wise $L$ diagnostic. They do **not** establish physical or acoustic validity. Historical research workbooks were **not** regenerated.  
+**Status:** production documentation of Ratio_extrapol **1.5.5 on `main`**. Implementation commit `f3cb1cc60ca4d1d99a42abc384c3d2b5274d572a`; merge on GitHub `main` `a1383c9cca3ad6b35473e37d5297257b7a18f802` (PR #1). Reviewed 1.5.4 baseline: `9a307705100f986258991c88d51bc7324e98e61e`. Engineering corrections restore eligible donor dynamics, per-relation provenance, and a note-wise $L$ diagnostic. They do **not** establish physical or acoustic validity. Historical research workbooks were **not** regenerated.  
 **Implementation identifiers (unchanged in source):** Python package `ste_lab` reports version 1.5.5 and still prints “STE Lab” in the GUI, workbook metadata, and some comments. Those strings are **legacy self-names inside the code**, not the current repository name.  
 **Language:** English. StackEdit-compatible Markdown + LaTeX (`$...$` inline, `$$...$$` display). No custom macros.  
 **Audit date:** 2026-09-17. Donor-provenance correction pass: 2026-09-17.
@@ -21,13 +21,13 @@ Do **not** treat this Ratio_extrapol repository as identical to Extrapol_data, t
 | Current name | Ratio_extrapol (GitHub); local folder `Ratio_Extrapol` |
 | Legacy name in source | STE Lab / package `ste_lab` (not renamed in this documentation pass) |
 | Local repository root | `C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol` |
-| Local branch | `fix/1.5.4-donor-provenance` (created from `main` at `9a30770`) |
-| Reviewed baseline | `9a307705100f986258991c88d51bc7324e98e61e` (v1.5.4, clean `main`) |
-| Documented source | working tree on this branch after the 1.5.5 donor/provenance/diagnostic corrections (not that baseline commit) |
-| Uncommitted source changes at this documentation pass | the 1.5.5 correction files listed in Appendix B. Historical analyses were not rewritten. |
+| Local branch | `main` |
+| Reviewed baseline | `9a307705100f986258991c88d51bc7324e98e61e` (v1.5.4) |
+| Documented source | v1.5.5 on `main` (`f3cb1cc` implementation; `a1383c9` merge of PR #1) |
+| Uncommitted source changes at this documentation pass | provenance header only (this file). Historical analyses were not rewritten. |
 | GitHub | https://github.com/LuisMRaimundo/Ratio_extrapol |
 | GitHub default branch | `main` |
-| Local vs GitHub | this branch is local only; this task does not push or merge |
+| Local vs GitHub | identical at `a1383c9` before this provenance edit |
 | Declared dependencies | `numpy>=1.24`, `scipy>=1.11`, `pandas>=2.0`, `openpyxl>=3.1` ([requirements.txt](../requirements.txt)) |
 | Environment used only for version strings and SciPy docstring (project modules were not imported) | Python 3.10.11; `numpy 2.2.6`, `scipy 1.13.1`, `pandas 2.3.3`, `openpyxl 3.1.5` |
 | Logarithm in first-party code | natural log: `numpy.log` / `math.log` and `numpy.exp` / `math.exp` — **not** $\log_{10}$, **not** dB, **not** SPL |
@@ -35,7 +35,7 @@ Do **not** treat this Ratio_extrapol repository as identical to Extrapol_data, t
 
 SHA-256 hashes of documented files are in [Appendix B](#appendix-b--source-file-hashes). Recompute if those files change.
 
-This document describes the **local working-tree source**. Appendix B hashes are of those files; this Markdown file is intentionally omitted from the hash table (no self-referential hash).
+This document describes the **merged 1.5.5 source on `main`**. Appendix B hashes are of those implementation files (unchanged by this provenance edit); this Markdown file is intentionally omitted from the hash table (no self-referential hash).
 
 ---
 
@@ -2401,11 +2401,11 @@ No first-party `.py` file was left “not inspected.”
 
 ## Appendix B — Source-file hashes
 
-SHA-256 of the working-tree files after the 1.5.5 donor-provenance correction (branch `fix/1.5.4-donor-provenance`, baseline `9a30770`). Line counts are physical lines including blanks. This Markdown file is omitted (no self-referential hash).
+SHA-256 of the 1.5.5 implementation files merged on `main` (`f3cb1cc`; baseline `9a30770`). Line counts are physical lines including blanks. This Markdown file is omitted (no self-referential hash).
 
 | File | SHA-256 | Lines |
 |------|---------|------:|
-| `README.md` | `2b528046aadd346affe7bceb869b11017dc4eee4ae10ed0542f218d3d204c513` | 77 |
+| `README.md` | `05800fc543360b1475ca7cb0971719b8ba67f003505189e666abace8e10f7efd` | 77 |
 | `build_ste_preparatory.py` | `a7b8679900dd43d69dc4768bf151a46abb3d20153583b969905594e7b6735c8d` | 1366 |
 | `build_viola_ste_preparatory.py` | `5987f3e4838aee00f8fd8e76cb6b4479eda85f76aa4d8f48d1f879a4caa9da8f` | 19 |
 | `calibration.yaml` | `c7dc1abc5409d1084917f01172f4a20690e7477af652f1eb4125733068d8a468` | 42 |
