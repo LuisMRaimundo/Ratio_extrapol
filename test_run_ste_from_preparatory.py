@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
@@ -36,6 +37,7 @@ from run_ste_from_preparatory import (
     parse_orch_effect_column,
     run,
 )
+from ste_lab.calibration import CalibrationConfig
 from ste_lab.evidence import evidence_map_rows, principal_empirical_rows, stamp_evidence
 from ste_lab.session import Project
 from ste_lab.transfer import Anchor, _interp_log_ratio
@@ -258,7 +260,9 @@ class TestRunFromPreparatory(unittest.TestCase):
             prep = Path(tmp) / "prep.xlsx"
             out = Path(tmp) / "out"
             expect = _write_prep(prep)
-            written = run(prep, out, instrument="viola")
+            single = CalibrationConfig(transfer_field_mode="single")
+            with patch("run_ste_from_preparatory.load_config", return_value=single):
+                written = run(prep, out, instrument="viola")
             names = {p.name for p in written}
             self.assertEqual(
                 names,
@@ -789,6 +793,63 @@ class TestTransferRelations(unittest.TestCase):
         )
         self.assertAlmostEqual(Li[60], (0.20 * 3 + 0.40 * 2) / 5)
         self.assertAlmostEqual(Li[70], 0.20)
+
+    def test_pooled_enriches_L_but_media_is_only_iowa_orch(self):
+        """Other collections vote through L; Media stays mean(IOWA, ORCH)."""
+        from ste_lab.relations import Relation, field_for_transfer
+        from ste_lab.media_policy import production_media_of
+        from ste_lab.transfer import Anchor, technique_transfer
+
+        orch = Relation(
+            kind="technique",
+            instrument="viola",
+            source_cond="ordinario",
+            target_cond="sul ponticello",
+            collection="ORCH",
+            dynamic="mf",
+            anchors=[
+                Anchor(67, 11.5, 10.35),
+                Anchor(72, 12.0, 10.8),
+                Anchor(79, 13.0, 11.7),
+            ],
+            used_in_production=True,
+        )
+        mcgill = Relation(
+            kind="technique",
+            instrument="viola",
+            source_cond="ordinario",
+            target_cond="sul ponticello",
+            collection="MCGILL",
+            dynamic="mf",
+            anchors=[
+                Anchor(67, 11.5, 11.5 * math.exp(0.0)),
+                Anchor(72, 12.0, 12.0 * math.exp(0.0)),
+                Anchor(79, 13.0, 13.0 * math.exp(0.0)),
+            ],
+        )
+        L_single, _, _ = field_for_transfer([orch], [72], production=orch, mode="single")
+        L_pool, _, _ = field_for_transfer(
+            [orch, mcgill], [72], production=orch, mode="pooled", weight="anchors", min_collections=2
+        )
+        self.assertNotAlmostEqual(L_pool[72], L_single[72])
+        iowa_src = build_layer("viola", "IOWA", "ordinario", "mf", {72: 24.0}, "measured")
+        orch_src = build_layer("viola", "ORCH", "ordinario", "mf", {72: 12.0}, "measured")
+        iowa_eff = technique_transfer(
+            iowa_src, orch.anchors, "sul ponticello", collection="IOWA",
+            copy_anchors=False, log_ratio_field=L_pool,
+        ).layer
+        orch_rec = build_layer("viola", "ORCH", "sul ponticello", "mf", {72: 10.8}, "measured")
+        mcgill_abs = build_layer("viola", "MCGILL", "sul ponticello", "mf", {72: 99.0}, "measured")
+        media = production_media_of(
+            [iowa_eff, orch_rec, mcgill_abs],
+            name="media",
+            instrument="viola",
+            technique="sul ponticello",
+        )
+        expected = 0.5 * (iowa_eff.cells[72].value + 10.8)
+        self.assertAlmostEqual(media.cells[72].value, expected)
+        self.assertNotAlmostEqual(media.cells[72].value, (iowa_eff.cells[72].value + 10.8 + 99.0) / 3)
+        self.assertNotAlmostEqual(iowa_eff.cells[72].value, 24.0 * math.exp(L_single[72]))
 
     def test_measured_cell_never_overwritten_any_mode(self):
         from ste_lab.transfer import Anchor, technique_transfer

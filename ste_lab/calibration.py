@@ -96,7 +96,7 @@ class CalibrationConfig:
     allow_review_required: bool = False
     relative_epsilon: float = DEFAULT_REL_EPS
     seed: int = 0
-    transfer_field_mode: str = "single"
+    transfer_field_mode: str = "pooled"
     transfer_field_weight: str = "anchors"
     transfer_field_min_collections: int = 2
 

@@ -1225,7 +1225,7 @@ def export_zenodo_workbook(
             (
                 "Transfer relations",
                 "L_Validation / L_Spread / Summary_Validation check the transfer assumption across collections. "
-                "Default transfer_field.mode=single is unchanged production L. See manual §§5.10–5.12.",
+                "Media is mean(IOWA, Orchidea). Extra collections enrich L only, never absolute CDM. See manual §§5.10–5.12.",
             ),
         ],
     )
@@ -1329,7 +1329,7 @@ def export_zenodo_workbook(
         ("key", "value"),
         [
             ("acoustic_pitch_basis", "sounding_concert"),
-            ("schema_version", "1.4.0"),
+            ("schema_version", "1.5.0"),
             ("template", "instrument_profiles_template.xlsx"),
             ("principal_evidence_sheet", "Empirical_ORCH"),
             ("source_media_sheet", f"{media_name} (completed grid, not principal evidence)"),

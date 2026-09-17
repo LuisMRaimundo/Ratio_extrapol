@@ -68,7 +68,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   <p>
     Current project name: <b>Ratio_extrapol</b>. The GUI and package still say “STE Lab” / <code>ste_lab</code> (legacy identifiers).
     One document, two voices: a plain-language user’s guide, then the scientific specification.
-    Package version 1.4.0 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
+    Package version 1.5.0 · Combined Density Metric F-061 (a project-defined spectral-density metric, not “brightness”).
     Two family workflows: bowed strings keep separate effect books; woodwinds use ordinario family-transfer calibration.
     Source workbooks are never overwritten. Genuine compiled Iowa files are merged (longest-file-wins is prohibited).
     Production Media, AcousticTable, and Final_Calibration share one family-specific resolver.
@@ -409,8 +409,10 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 
 <h3>5.12 Pooled log-ratio field (optional)</h3>
 <p class="src">calibration.yaml · transfer_field &nbsp;|&nbsp; ste_lab/relations.py · field_for_transfer</p>
-<p>Default <code>mode: single</code> is today’s field: the production relation interpolated by §5.4, clipped to [−3, 3]. <code>mode: pooled</code> replaces that field, at each MIDI, by the mean of the per-collection <i>L</i> values present there, weighted by that collection’s anchor count (<code>weight: anchors</code>) or equally (<code>weight: equal</code>). The pooled anchors are then interpolated, held, and clipped exactly as today. Applies to technique, instrument, and collection relations (woodwinds pool <i>L</i><sub>instr</sub> and <i>L</i><sub>coll</sub> separately). Where fewer than <code>min_collections</code> (default 2) overlap, the code falls back to <code>single</code> and logs it.</p>
-<p>Invariants that do not change under <code>pooled</code>: a recorded target layer is copied as <code>measured</code> and never has <i>L</i> applied; woodwind <code>empirical_only</code> still keeps a measured target cell; string Media remains mean(IOWA, ORCH); Philharmonia / McGill absolute values never enter Media or a measured slot. Pooled modelled cells are tagged <code>modelled_&lt;COLL&gt;_pooled</code>; the cell comment, Session_Log (per MIDI), and WorkbookMeta / Provenance list the contributing collections and weights.</p>
+<p>The published number is always the IOWA/Orchidea Media of §5.6. Extra collections do not add a third CDM term. They <em>enrich</em> that Media only by voting on <i>L</i> = ln(effect / ordinario) where their anchors overlap the teacher’s.</p>
+<p>Default <code>mode: pooled</code> (1.5.0): at each MIDI with ≥ <code>min_collections</code> (default 2) overlapping <em>anchors</em>, <i>L̂</i> is the mean of the per-collection <i>L</i> values, weighted by that collection’s anchor count (<code>weight: anchors</code>) or equally (<code>weight: equal</code>). That pooled list is then interpolated, held, and clipped exactly as §5.4. Where fewer collections overlap, the production teacher is kept (Orchidea; McGill sordino only if Orchidea has none) and the fallback is logged. Applies to technique, instrument, and collection relations (woodwinds pool <i>L</i><sub>instr</sub> and <i>L</i><sub>coll</sub> separately).</p>
+<p><code>mode: single</code> is the 1.4.0 one-teacher field (bit-for-bit with the published books).</p>
+<p>Invariants under both modes: a recorded Orchidea layer is copied as <code>measured</code> and never has <i>L</i> applied; woodwind <code>empirical_only</code> still keeps a measured target cell; string Media remains mean(IOWA, ORCH); Philharmonia / McGill <em>absolute</em> values never enter Media or a measured slot. Pooled modelled cells are tagged <code>modelled_&lt;COLL&gt;_pooled</code>; the cell comment, Session_Log (per MIDI), and WorkbookMeta / Provenance list the contributing collections and weights.</p>
 
 <!-- ===================== TECHNICAL MANUAL ===================== -->
 <h2 id="tech">6. Technical manual (implementation notes)</h2>
@@ -611,7 +613,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
 </ul>
 
 <footer>
-  Ratio_extrapol · package <code>ste_lab</code> v1.4.0 · User manual + technical manual ·
+  Ratio_extrapol · package <code>ste_lab</code> v1.5.0 · User manual + technical manual ·
   <code>C:\Users\lmr20\Desktop\Código extrapolação\Ratio_Extrapol</code>.
   Rebuild examples: <code>D:\CORDAS_3\VIOLA 4</code>, <code>D:\CORDAS_3\CELLO</code>, <code>D:\MADEIRAS_2\BASS_CLARINET</code>.
   Analysis companion: <code>D:\CORDAS_2\VIOLIN\Violino - análise_v2</code>.

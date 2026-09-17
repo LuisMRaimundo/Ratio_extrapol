@@ -30,9 +30,13 @@ extrapolation:
 disagreement:
   relative_epsilon: 1.0e-12
 
-# Optional pooled log-ratio field. `single` is today's production field
-# (bit-for-bit). `pooled` averages per-collection L at overlapping MIDI.
+# L field used to build IOWA / unrecorded-ORCH effect curves.
+# Media is always mean(IOWA, Orchidea) of those curves — never Phil/McGill CDM.
+# pooled: other collections vote only through L = ln(effect/ordinario).
+#          Overlapping anchors enrich L; elsewhere the Orchidea (or McGill-sordino)
+#          teacher is kept. Absolute levels of extra collections never enter Media.
+# single: one teacher only (bit-for-bit with 1.4.0 / published books).
 transfer_field:
-  mode: single          # single | pooled
+  mode: pooled          # pooled | single
   weight: anchors       # anchors | equal
   min_collections: 2

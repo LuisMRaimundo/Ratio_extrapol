@@ -537,7 +537,7 @@ def export_workbook(project: Project, path: Path, flags: list[Flag], media_layer
             (
                 "Transfer relations",
                 "L_Validation / L_Spread / Summary_Validation check the transfer assumption across collections. "
-                "Default transfer_field.mode=single is unchanged production L. See manual §§5.10–5.12.",
+                "Media is mean(IOWA, Orchidea). Extra collections enrich L only, never absolute CDM. See manual §§5.10–5.12.",
             ),
         ],
     )
@@ -649,7 +649,7 @@ def export_workbook(project: Project, path: Path, flags: list[Flag], media_layer
     _write_kv(
         meta,
         [
-            ("schema_version", "1.4.0"),
+            ("schema_version", "1.5.0"),
             ("acoustic_pitch_basis", "sounding_concert"),
             ("template", "STE Lab"),
             ("curated_for", "technique and family-register extrapolation"),

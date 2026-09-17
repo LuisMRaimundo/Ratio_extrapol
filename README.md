@@ -2,7 +2,7 @@
 
 Local folder: `Ratio_Extrapol`. GitHub: [LuisMRaimundo/Ratio_extrapol](https://github.com/LuisMRaimundo/Ratio_extrapol).
 
-Python package `ste_lab` (v1.4.0) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
+Python package `ste_lab` (v1.5.0) and the GUI title “STE Lab” are leftover identifiers. They are not a second product.
 
 This repository estimates Combined Density Metric (F-061 / `spectral_mass`) curves across technique, collection, and missing notes. It does **not** compute F-061 from audio. Engineering consistency of exports is not a claim of acoustic validity.
 
@@ -33,9 +33,9 @@ The same resolver writes in-memory Media, Zenodo Media, AcousticTable, and Final
 
 Technique transfer still holds edge \(L\). That operator was not changed to match Fill.
 
-## Transfer relations (v1.4.0)
+## Transfer relations (v1.5.0)
 
-Technique, instrument, and collection log-ratios share one `Relation` record (`ste_lab/relations.py`). Default `transfer_field.mode: single` is unchanged production \(L\). Validation sheets (`L_Validation`, `L_Spread`, `Summary_Validation`) are always written and do not replace a measurement. `mode: pooled` is optional.
+Technique, instrument, and collection log-ratios share one `Relation` record (`ste_lab/relations.py`). **Media is always mean(IOWA, Orchidea).** Extra collections (Philharmonia, McGill, …) enrich that Media only through \(L=\ln(\mathrm{effect}/\mathrm{ordinario})\) when anchors overlap (`transfer_field.mode: pooled`, the default). Their absolute CDM never enters Media. `mode: single` is the one-teacher field (1.4.0 / published books).
 
 ## \(L_{\mathrm{coll}}\)
 
